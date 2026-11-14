@@ -1,6 +1,6 @@
 # Ticketsystem – Konzept und Architektur
 
-Stand: 14.11.2026 · Status: Entwurf zur Abstimmung, Rahmen und Stack geklärt
+Stand: 14.11.2026 · Status: Rahmen, Stack und Hosting geklärt – bereit für Phase 0
 
 Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsystem. Tickets entstehen aus eingehenden E-Mails und direkt aus der Anwendung der Mandanten, werden Mitarbeitern bzw. Teams zugewiesen und per E-Mail beantwortet. Es legt die Grundentscheidungen fest, die später teuer zu ändern sind: Mandantentrennung, Datenmodell, E-Mail-Verarbeitung, Rechte und Technik. Offene Punkte stehen gesammelt in [Abschnitt 14](#14-offene-fragen).
 
@@ -11,7 +11,7 @@ Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsyste
 | Wer bearbeitet Tickets? | **Nur das eigene Team** bearbeitet die Tickets aller Mandanten (Dienstleister-Modell). | Mandanten bekommen keine Agenten-Zugänge. Jeder Agent arbeitet mandantenübergreifend; eine gemeinsame Arbeitsliste über alle Mandanten ist die Hauptansicht. |
 | Größe | **ca. 5 Mandanten, 2–10 Mitarbeiter** | Webhosting reicht; keine Clusterlösung, keine eigene Suchmaschine. Einfache Lösungen haben Vorrang. |
 | Entwicklung und Betrieb | **Der Auftraggeber selbst** (mit Claude) | Möglichst wenig Bausteine, die betrieben werden müssen; ein Repository, ein Deployment. |
-| Hosting | **Vorhandene Webhosting-Pakete**, kein eigener Server | Hintergrundarbeit per Cronjob; Mailabruf pro Mandant z. B. alle 5 oder 10 Minuten ([Abschnitt 15](#15-tech-stack-empfehlung)). |
+| Hosting | **IONOS Webhosting (PHP 8.4.3)**, eigene Subdomain und eigener Webspace-Ordner, kein eigener Server | Hintergrundarbeit per Cronjob; Mailabruf pro Mandant z. B. alle 5 oder 10 Minuten ([Abschnitt 15](#15-tech-stack-empfehlung)). |
 | Art der Mandanten | **Nicht nur Vereine mit Mitgliederverwaltung.** Auch Firmen, die ein gemeinsames Postfach als Team abarbeiten wollen, z. B. Bestellungen an die Auftragsbearbeitung. | E-Mail bleibt der Hauptkanal; die App-Anbindung ist ein zusätzlicher Kanal für Mandanten mit Mitgliederverwaltung. Selbst zuweisen („Übernehmen“) ist Standard ([Abschnitt 9](#9-queues-und-zuweisung)). |
 | Anwendung | **Mitgliederverwaltung** (PHP + MySQL auf Webspace, dazu Handy-App mit Expo/React Native), je Verein eine Installation | Ticketsystem ebenfalls in **PHP (Laravel) mit MySQL/MariaDB** ([Abschnitt 15](#15-tech-stack-empfehlung)); jede Vereinsinstallation ist ein Mandant mit eigenem API-Schlüssel. |
 | Eigenentwicklung? | **Ja.** Hauptgrund: Nutzer der Mandanten sollen aus einer eigenen, mit Claude erstellten Anwendung heraus Tickets anlegen, wenn dort etwas nicht klappt. | Neuer, gleichwertiger Kanal **„App“** neben E-Mail, mit eigener API (siehe [Abschnitt 6a](#6a-ticket-anlage-aus-der-anwendung)). |
@@ -664,6 +664,8 @@ Schutz vor Regelschleifen: Jede Regel wirkt pro Ereignis höchstens einmal; begr
 | F16 | Technik der Anwendung | Mitgliederverwaltung: PHP + MySQL auf Webspace, Handy-App mit Expo/React Native. |
 | F20 | Hosting | Vorhandene Webhosting-Pakete, kein eigener Server; Mailabruf per Cronjob z. B. alle 5–10 Minuten. |
 | F21 | Art der Mandanten | Nicht nur Vereine mit Mitgliederverwaltung, auch Firmen mit Team-Postfach (z. B. Bestellungen an die Auftragsbearbeitung). |
+| F22 | Wer arbeitet die Tickets ab? | Das eigene Team; jeder Mitarbeiter kann mehrere Mandanten betreuen (Zuordnung pro Mitarbeiter über Mitgliedschaften). |
+| F23 | Hoster | IONOS Webhosting, PHP 8.4.3; eigene Subdomain und eigener Webspace-Ordner für das Ticketsystem; Cronjob einstellbar. |
 | F18 | Anhänge | Alle gängigen Dateien inkl. Screenshots, PDF, DOCX, XLSX, APK (Abschnitt 6b). |
 
 ### Noch offen
@@ -672,8 +674,6 @@ Die Annahmen in der rechten Spalte gelten, bis eine Antwort vorliegt. Die wichti
 
 | # | Frage | Annahme bis zur Klärung |
 |---|---|---|
-| F22 | **Wer arbeitet die Tickets ab?** Im Beispiel Auftragsbearbeitung: Sind die Mitarbeiter, die sich die Bestellungen zuordnen, **Angestellte dieser Firma** (dann bräuchte der Mandant doch eigene Zugänge, nur für seine eigenen Tickets), oder **dein Team**? | Beides vorgesehen: Ein Mitarbeiter kann auf einen einzigen Mandanten beschränkt werden und sieht dann nur dessen Tickets. |
-| F23 | **Welcher Hoster / welches Paket** soll es sein (z. B. all-inkl, IONOS, Strato, netcup)? Wichtig: PHP-Version, kürzestes Cron-Intervall, SSH ja/nein, Zeitlimit für Skripte. | PHP 8.2+, Cron alle 1–5 Minuten, ohne SSH. |
 | F17 | Soll die Anwendung schwere Fehler auch **automatisch** melden (ohne Klick des Nutzers), oder nur Meldungen durch Nutzer? | Zuerst nur Nutzermeldungen; automatische Meldungen in Phase 2. |
 | F19 | Sollen Nutzer den **Stand ihrer Meldungen in der Anwendung** sehen (Liste „Meine Meldungen“), oder reicht die Kommunikation per E-Mail? | E-Mail reicht im MVP; API für die Liste ist vorbereitet. |
 | F5 | Welche Mailsysteme nutzen die Mandanten (Microsoft 365, Google, IMAP)? Ist eine Weiterleitung an eine Plattformadresse für sie in Ordnung? | Weiterleitung zum Start in Ordnung. |
@@ -734,7 +734,7 @@ Daraus folgt: Der Auftraggeber kennt PHP und MySQL bereits und betreibt sie. Das
 | Deployment | GitHub Actions baut das Projekt (inkl. `vendor/`) und lädt es per SFTP/FTP auf den Webspace; Composer muss beim Hoster also nicht vorhanden sein. Datenbank-Migrationen laufen über einen geschützten Aufruf oder per SSH, falls vorhanden. |
 | Backup | Datenbank- und Datei-Sicherung des Hosters, zusätzlich ein nächtlicher Export per Cronjob in die Nextcloud. |
 
-**Voraussetzungen beim Hoster** (siehe F23): PHP 8.2 oder neuer mit den Erweiterungen `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `zip`, `curl` (und idealerweise `imap` oder `sockets`); MySQL/MariaDB; Cronjobs (am besten im Minutentakt); Document-Root auf den Ordner `public/` einstellbar; ausgehende Verbindungen zu IMAP/SMTP-Servern (Ports 993/465/587) erlaubt; SSH wäre schön, ist aber nicht zwingend.
+**Voraussetzungen beim Hoster** (IONOS, PHP 8.4.3 erfüllt die Anforderung von Laravel 12; der Rest wird mit einer Test-Installation geprüft): PHP 8.2 oder neuer mit den Erweiterungen `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `zip`, `curl` (und idealerweise `imap` oder `sockets`); MySQL/MariaDB; Cronjobs (am besten im Minutentakt); Document-Root der Subdomain auf den Ordner `public/` einstellbar; ausgehende Verbindungen zu IMAP/SMTP-Servern (Ports 993/465/587) erlaubt; SSH wäre schön, ist aber nicht zwingend.
 
 Sollte es später einmal mehr Last oder Anforderungen geben (z. B. sofortiger Mailabruf per IMAP IDLE, Virenscan), lässt sich dieselbe Anwendung ohne Umbau auf einen kleinen Server umziehen.
 
@@ -767,7 +767,7 @@ Zugeschnitten auf einen Entwickler mit Claude, 5 Mandanten und ein kleines Team.
 ### Phase 0 – Fundament (ca. 2 Wochen)
 
 - Laravel-Projekt, CI (GitHub Actions) mit automatischem Deployment auf das Webhosting, lokale Entwicklungsumgebung (z. B. Laravel Herd, mit MariaDB und Mailpit zum Testen von Mails)
-- Prüfen, ob das gewählte Hosting-Paket die Voraussetzungen erfüllt (F23), mit einer kleinen Test-Installation inkl. Cronjob
+- Test-Installation auf der IONOS-Subdomain: Document-Root auf `public/`, Cronjob, IMAP-Verbindung zu einem Testpostfach, Zeitlimit und Dateigrößen-Limit für Uploads prüfen
 - Schema für Mandanten, Nutzer, Mitgliedschaften; Mandanten-Scope + automatische Tests, dass Mandant A keine Daten von Mandant B sieht
 - Login mit MFA; Admin legt Mandanten und Nutzer an
 
@@ -822,7 +822,7 @@ Wegen der kleinen Größe und des Dienstleister-Modells entfallen gegenüber ein
 
 ### Nächste Schritte
 
-1. F22 (Mitarbeiter des Mandanten oder eigenes Team?) und F23 (Hoster) beantworten, danach F17, F19 und F6.
+1. Die restlichen offenen Fragen (F17, F19, F6, F8 …) sind nicht blockierend; die Annahmen gelten, bis sie geändert werden.
 2. Konzept final abstimmen und den Pull Request mergen.
 3. Optional: UI-Entwürfe der Kernscreens (Arbeitsliste, Ticketdetail, Postfach- und API-Schlüssel-Einrichtung).
 4. Phase 0 starten: Repository-Grundgerüst und Mandantentrennung mit Tests.

@@ -1,6 +1,8 @@
-# Ticketsystem – Konzept und Architektur
+# Anliego – Konzept und Architektur
 
-Stand: 14.11.2026 · Status: Rahmen, Stack und Hosting geklärt – bereit für Phase 0
+Stand: 14.11.2026 · Status: Rahmen, Stack und Hosting geklärt – Phase 0 in Arbeit
+
+**Name:** Anliego (von „Anliegen“). Logo: Sprechblase mit Haken, Indigo und Amber (`public/images/`).
 
 Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsystem. Tickets entstehen aus eingehenden E-Mails und direkt aus der Anwendung der Mandanten, werden Mitarbeitern bzw. Teams zugewiesen und per E-Mail beantwortet. Es legt die Grundentscheidungen fest, die später teuer zu ändern sind: Mandantentrennung, Datenmodell, E-Mail-Verarbeitung, Rechte und Technik. Offene Punkte stehen gesammelt in [Abschnitt 14](#14-offene-fragen).
 
@@ -398,9 +400,9 @@ Zusätzlich zur Meldung durch den Nutzer kann die Anwendung schwere Fehler auch 
 
 Ob das gewünscht ist, ist offen (F17).
 
-### 6a.5 Anbindung der Mitgliederverwaltung
+### 6a.5 Beispiel: Anbindung der Mitgliederverwaltung
 
-Die Anwendung ist die Mitgliederverwaltung (PHP/MySQL auf Webspace, dazu die Handy-App mit Expo/React Native). Jede Vereinsinstallation entspricht einem Mandanten und bekommt einen eigenen API-Schlüssel. Die Anbindung ist in beiden Teilen klein:
+Die App-Schnittstelle ist allgemein gehalten und für beliebige Anwendungen nutzbar. Die Mitgliederverwaltung (PHP/MySQL auf Webspace, dazu die Handy-App mit Expo/React Native) ist das erste Beispiel. Jede Vereinsinstallation entspricht einem Mandanten und bekommt einen eigenen API-Schlüssel. Die Anbindung ist in beiden Teilen klein:
 
 **Weboberfläche (PHP)**
 - Neue Datei `inc/tickets.php`: ein schlanker Client mit cURL (die Mitgliederverwaltung nutzt cURL bereits, etwa für Nextcloud), ohne Composer. Er schickt Meldung, Anhänge und Kontext an das Ticketsystem.

@@ -1,0 +1,75 @@
+name: Deploy auf IONOS
+
+# Lädt Anliego per SFTP auf das IONOS-Webhosting und führt danach die Datenbank-Migrationen aus.
+# Einrichtung: siehe docs/betrieb-ionos.md
+#
+# Benötigte Secrets (Settings → Secrets and variables → Actions):
+#   IONOS_SFTP_HOST, IONOS_SFTP_USER, IONOS_SFTP_PASSWORD, IONOS_TARGET_DIR, ANLIEGO_DEPLOY_TOKEN
+# Benötigte Variablen:
+#   ANLIEGO_URL (z. B. https://tickets.example.de)
+#   DEPLOY_ON_PUSH = true, wenn jeder Push auf main automatisch hochgeladen werden soll
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-ionos
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_PUSH == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, intl, zip, fileinfo
+          coverage: none
+
+      - name: Abhängigkeiten für Produktion installieren
+        run: |
+          cp .env.example .env
+          composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+          rm .env
+
+      - name: lftp installieren
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Hochladen per SFTP
+        env:
+          HOST: ${{ secrets.IONOS_SFTP_HOST }}
+          USER: ${{ secrets.IONOS_SFTP_USER }}
+          PASS: ${{ secrets.IONOS_SFTP_PASSWORD }}
+          DIR: ${{ secrets.IONOS_TARGET_DIR }}
+        run: |
+          lftp -u "$USER","$PASS" "sftp://$HOST" <<LFTP
+          set sftp:auto-confirm yes
+          set net:max-retries 3
+          set net:timeout 30
+          mkdir -p -f "$DIR"
+          mirror --reverse --delete --parallel=4 \
+            --exclude-glob .git/ --exclude-glob .github/ --exclude-glob tests/ \
+            --exclude-glob docs/ --exclude-glob storage/ \
+            --exclude .env --exclude database/database.sqlite \
+            --exclude phpunit.xml --exclude .phpunit.result.cache \
+            ./ "$DIR"
+          mirror --reverse --only-missing storage/ "$DIR/storage/"
+          bye
+          LFTP
+
+      - name: Migrationen ausführen
+        env:
+          TOKEN: ${{ secrets.ANLIEGO_DEPLOY_TOKEN }}
+          URL: ${{ vars.ANLIEGO_URL }}
+        run: |
+          curl --fail-with-body -sS -X POST -H "X-Deploy-Token: $TOKEN" "$URL/_deploy/migrate"

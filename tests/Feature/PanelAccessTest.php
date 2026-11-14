@@ -1,0 +1,80 @@
+<?php
+
+use App\Enums\MembershipRole;
+use App\Models\Tenant;
+use App\Models\TenantCounter;
+use App\Models\User;
+use Illuminate\Support\Facades\Artisan;
+
+it('leitet nicht angemeldete Besucher zur Anmeldung', function () {
+    $this->get('/')->assertRedirect('/login');
+});
+
+it('zeigt die Anmeldeseite mit Namen Anliego', function () {
+    $this->get('/login')->assertOk()->assertSee('Anliego');
+});
+
+it('lässt aktive Mitarbeiter auf die Übersicht', function () {
+    $this->actingAs(User::factory()->create())->get('/')->assertOk();
+});
+
+it('sperrt inaktive Mitarbeiter aus', function () {
+    $this->actingAs(User::factory()->create(['active' => false]))->get('/')->assertForbidden();
+});
+
+it('erlaubt die Mandanten- und Mitarbeiterverwaltung nur Administratoren', function () {
+    $agent = User::factory()->create();
+
+    $this->actingAs($agent)->get('/mandanten')->assertForbidden();
+    $this->actingAs($agent)->get('/mitarbeiter')->assertForbidden();
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    $this->actingAs($admin)->get('/mandanten')->assertOk();
+    $this->actingAs($admin)->get('/mitarbeiter')->assertOk();
+});
+
+it('erlaubt die Teamverwaltung Supervisoren', function () {
+    $tenant = Tenant::factory()->create();
+    $supervisor = User::factory()->create();
+    $supervisor->memberships()->create(['tenant_id' => $tenant->id, 'role' => MembershipRole::Supervisor]);
+
+    $this->actingAs($supervisor)->get('/teams')->assertOk();
+    $this->actingAs(User::factory()->create())->get('/teams')->assertForbidden();
+});
+
+it('vergibt Ticketnummern je Mandant fortlaufend', function () {
+    $a = Tenant::factory()->create();
+    $b = Tenant::factory()->create();
+
+    expect(TenantCounter::nextTicketNumber($a->id))->toBe(1000)
+        ->and(TenantCounter::nextTicketNumber($a->id))->toBe(1001)
+        ->and(TenantCounter::nextTicketNumber($b->id))->toBe(1000);
+});
+
+it('führt Migrationen über die Deploy-Adresse nur mit gültigem Token aus', function () {
+    $this->post('/_deploy/migrate')->assertNotFound();
+
+    config(['anliego.deploy_token' => 'geheim']);
+    Artisan::shouldReceive('call')->times(4);
+    Artisan::shouldReceive('output')->andReturn('ok');
+
+    $this->post('/_deploy/migrate', [], ['X-Deploy-Token' => 'falsch'])->assertNotFound();
+    $this->post('/_deploy/migrate', [], ['X-Deploy-Token' => 'geheim'])->assertOk()->assertSee('migrate --force');
+});
+
+it('legt bei der Ersteinrichtung ohne SSH den ersten Administrator an', function () {
+    config([
+        'anliego.deploy_token' => 'geheim',
+        'anliego.initial_admin.email' => 'chef@example.test',
+        'anliego.initial_admin.password' => 'EinLangesPasswort1',
+    ]);
+    Artisan::shouldReceive('call')->times(8);
+    Artisan::shouldReceive('output')->andReturn('ok');
+
+    $this->post('/_deploy/migrate', [], ['X-Deploy-Token' => 'geheim'])->assertOk()->assertSee('chef@example.test');
+    expect(User::where('email', 'chef@example.test')->first()?->is_admin)->toBeTrue();
+
+    // zweiter Aufruf legt keinen weiteren an
+    $this->post('/_deploy/migrate', [], ['X-Deploy-Token' => 'geheim'])->assertOk()->assertDontSee('angelegt');
+    expect(User::count())->toBe(1);
+});

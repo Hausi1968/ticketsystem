@@ -10,6 +10,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(TenantContext::class);
+        $this->app->bind(\App\Mail\Inbound\MailFetcher::class, \App\Mail\Inbound\ImapMailFetcher::class);
     }
 
     public function boot(): void

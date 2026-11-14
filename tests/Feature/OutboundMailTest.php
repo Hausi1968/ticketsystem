@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\MessageType;
-use App\Enums\TicketStatus;
+use App\Models\TicketStatus;
 use App\Jobs\DeliverTicketMessage;
 use App\Mail\Inbound\InboundMailProcessor;
 use App\Mail\Outbound\MailboxTransportFactory;
@@ -51,7 +51,7 @@ it('sendet eine Antwort über das Postfach im richtigen E-Mail-Verlauf', functio
     $ticket = $this->ticket->fresh();
 
     expect($message->delivery_status)->toBe('sent')
-        ->and($ticket->status)->toBe(TicketStatus::PendingCustomer)
+        ->and($ticket->status->system_key)->toBe(TicketStatus::WAITING)
         ->and($ticket->assignee_id)->toBe($this->agent->id)
         ->and($ticket->first_response_at)->not->toBeNull();
 });
@@ -65,7 +65,7 @@ it('ordnet die Kundenantwort auf unsere E-Mail wieder dem Ticket zu', function (
     ]));
 
     expect($receipt->outcome)->toBe('reopened')
-        ->and($this->ticket->fresh()->status)->toBe(TicketStatus::Open)
+        ->and($this->ticket->fresh()->status->system_key)->toBe(TicketStatus::OPEN)
         ->and($this->ticket->messages()->count())->toBe(3);
 });
 
@@ -113,15 +113,15 @@ it('weist Tickets nur Mitarbeitern des Mandanten zu', function () {
 
     $this->ticket->assignTo($this->agent, $this->agent);
     expect($this->ticket->fresh()->assignee_id)->toBe($this->agent->id)
-        ->and($this->ticket->fresh()->status)->toBe(TicketStatus::Open);
+        ->and($this->ticket->fresh()->status->system_key)->toBe(TicketStatus::OPEN);
 
     expect(fn () => $this->ticket->assignTo($outsider))->toThrow(AuthorizationException::class);
 });
 
 it('protokolliert Status- und Zuweisungsänderungen', function () {
     $this->ticket->assignTo($this->agent, $this->agent);
-    $this->ticket->changeStatus(TicketStatus::Solved, $this->agent);
+    $this->ticket->changeStatus(TicketStatus::SOLVED, $this->agent);
 
     expect($this->ticket->events()->pluck('type')->all())->toBe(['created', 'assigned', 'status'])
-        ->and($this->ticket->fresh()->solved_at)->not->toBeNull();
+        ->and($this->ticket->fresh()->closed_at)->not->toBeNull();
 });

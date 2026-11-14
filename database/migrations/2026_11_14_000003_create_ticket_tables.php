@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -54,12 +55,51 @@ return new class extends Migration
             $table->unique(['tenant_id', 'email']);
         });
 
+        // Frei definierbare Status. Das Verhalten legt fest, was der Status bewirkt:
+        // open = in Bearbeitung, pending = wartet, closed = schließt das Ticket.
+        // system_key markiert die Status, die Anliego selbst setzt (umbenennbar, nicht löschbar).
+        Schema::create('ticket_statuses', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('color')->default('gray');
+            $table->string('behaviour')->default('open'); // open | pending | closed
+            $table->boolean('reply_creates_new_ticket')->default(false); // nur bei closed
+            $table->string('system_key')->nullable()->unique(); // new | open | waiting | solved
+            $table->unsignedSmallInteger('sort')->default(0);
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+        });
+
+        $now = now();
+        DB::table('ticket_statuses')->insert([
+            ['name' => 'Neu', 'color' => 'info', 'behaviour' => 'open', 'reply_creates_new_ticket' => false, 'system_key' => 'new', 'sort' => 10, 'active' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['name' => 'Offen', 'color' => 'warning', 'behaviour' => 'open', 'reply_creates_new_ticket' => false, 'system_key' => 'open', 'sort' => 20, 'active' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['name' => 'Wartet auf Kunde', 'color' => 'gray', 'behaviour' => 'pending', 'reply_creates_new_ticket' => false, 'system_key' => 'waiting', 'sort' => 30, 'active' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['name' => 'Wartet auf Dritte', 'color' => 'gray', 'behaviour' => 'pending', 'reply_creates_new_ticket' => false, 'system_key' => null, 'sort' => 40, 'active' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['name' => 'Gelöst', 'color' => 'success', 'behaviour' => 'closed', 'reply_creates_new_ticket' => false, 'system_key' => 'solved', 'sort' => 50, 'active' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['name' => 'Geschlossen', 'color' => 'gray', 'behaviour' => 'closed', 'reply_creates_new_ticket' => true, 'system_key' => null, 'sort' => 60, 'active' => true, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+
+        // Kategorien: je Mandant oder (tenant_id leer) für alle Mandanten
+        Schema::create('ticket_categories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tenant_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->string('color')->default('gray');
+            $table->unsignedSmallInteger('sort')->default(0);
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+
+            $table->unique(['tenant_id', 'name']);
+        });
+
         Schema::create('tickets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->unsignedInteger('number');
             $table->string('subject');
-            $table->string('status')->default('new');
+            $table->foreignId('status_id')->constrained('ticket_statuses');
+            $table->foreignId('category_id')->nullable()->constrained('ticket_categories')->nullOnDelete();
             $table->string('priority')->default('normal');
             $table->string('channel')->default('email'); // email | api | web
             $table->unsignedBigInteger('mailbox_id')->nullable();
@@ -70,13 +110,12 @@ return new class extends Migration
             $table->timestamp('last_customer_message_at')->nullable();
             $table->timestamp('last_agent_message_at')->nullable();
             $table->timestamp('first_response_at')->nullable();
-            $table->timestamp('solved_at')->nullable();
             $table->timestamp('closed_at')->nullable();
             $table->timestamps();
 
             $table->unique(['tenant_id', 'id']);
             $table->unique(['tenant_id', 'number']);
-            $table->index(['status', 'assignee_id']);
+            $table->index(['status_id', 'assignee_id']);
             $table->foreign(['tenant_id', 'mailbox_id'])->references(['tenant_id', 'id'])->on('mailboxes');
             $table->foreign(['tenant_id', 'team_id'])->references(['tenant_id', 'id'])->on('teams');
             $table->foreign(['tenant_id', 'contact_id'])->references(['tenant_id', 'id'])->on('contacts');
@@ -185,6 +224,8 @@ return new class extends Migration
         Schema::dropIfExists('ticket_participants');
         Schema::dropIfExists('tickets');
         Schema::dropIfExists('contacts');
+        Schema::dropIfExists('ticket_categories');
+        Schema::dropIfExists('ticket_statuses');
         Schema::dropIfExists('mailboxes');
     }
 };

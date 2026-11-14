@@ -4,11 +4,12 @@ namespace App\Filament\Resources\Tickets\Pages;
 
 use App\Enums\MembershipRole;
 use App\Enums\TicketPriority;
-use App\Enums\TicketStatus;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Outbound\ReplySender;
 use App\Models\Ticket;
+use App\Models\TicketCategory;
+use App\Models\TicketStatus;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -45,7 +46,7 @@ class ViewTicket extends ViewRecord
     {
         return $schema->components([
             View::make('tickets.conversation')->viewData(fn () => [
-                'ticket' => $this->record->fresh(['tenant', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf',
+                'ticket' => $this->record->fresh(['tenant', 'status', 'category', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf',
                     'messages.attachments', 'messages.user', 'events.user']),
             ]),
         ]);
@@ -60,6 +61,7 @@ class ViewTicket extends ViewRecord
             ActionGroup::make([
                 $this->assignAction(),
                 $this->statusAction(),
+                $this->categoryAction(),
                 $this->priorityAction(),
             ])->label('Bearbeiten')->button()->color('gray')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
         ];
@@ -86,14 +88,14 @@ class ViewTicket extends ViewRecord
                     ->default(fn () => $this->record->participants->pluck('email')->all()),
                 FileUpload::make('files')->label('Anhänge')->multiple()->storeFiles(false)
                     ->maxSize(20 * 1024)->helperText('Bis 20 MB je Datei. Größere Dateien bitte als Link versenden.'),
-                Select::make('status')->label('Status danach')->options(TicketStatus::class)
-                    ->default(TicketStatus::PendingCustomer)->required(),
+                Select::make('status_id')->label('Status danach')->options(fn () => self::statusOptions())
+                    ->default(fn () => TicketStatus::system(TicketStatus::WAITING)->getKey())->required(),
             ])
             ->action(function (array $data) {
                 $message = app(ReplySender::class)->reply(
                     $this->record, auth()->user(), $data['body'], $data['cc'] ?? [],
                     $this->storeUploads($data['files'] ?? []),
-                    $data['status'] instanceof TicketStatus ? $data['status'] : TicketStatus::from($data['status']),
+                    TicketStatus::query()->findOrFail($data['status_id']),
                 );
 
                 $message->delivery_status === 'sent'
@@ -148,15 +150,41 @@ class ViewTicket extends ViewRecord
         return Action::make('status')->label('Status ändern')->icon(Heroicon::OutlinedFlag)
             ->visible(fn () => $this->canWrite())
             ->schema([
-                Select::make('status')->label('Status')->options(TicketStatus::class)
-                    ->default(fn () => $this->record->status)->required(),
+                Select::make('status_id')->label('Status')->options(fn () => self::statusOptions())
+                    ->default(fn () => $this->record->status_id)->required(),
             ])
             ->action(function (array $data) {
-                $status = $data['status'] instanceof TicketStatus ? $data['status'] : TicketStatus::from($data['status']);
+                $status = TicketStatus::query()->findOrFail($data['status_id']);
                 $this->record->changeStatus($status, auth()->user());
-                Notification::make()->success()->title('Status: '.$status->getLabel())->send();
+                Notification::make()->success()->title('Status: '.$status->name)->send();
                 $this->refreshRecord();
             });
+    }
+
+    private function categoryAction(): Action
+    {
+        return Action::make('category')->label('Kategorie')->icon(Heroicon::OutlinedTag)
+            ->visible(fn () => $this->canWrite())
+            ->schema([
+                Select::make('category_id')->label('Kategorie')->placeholder('– keine –')
+                    ->options(fn () => TicketCategory::query()->where('active', true)
+                        ->forTenant((int) $this->record->tenant_id)->ordered()->pluck('name', 'id'))
+                    ->default(fn () => $this->record->category_id),
+            ])
+            ->action(function (array $data) {
+                $category = $data['category_id'] ? TicketCategory::query()->findOrFail($data['category_id']) : null;
+                $this->record->changeCategory($category, auth()->user());
+                Notification::make()->success()->title('Kategorie gespeichert')->send();
+                $this->refreshRecord();
+            });
+    }
+
+    /** Aktive Status; schließende Status sind in der Auswahl gekennzeichnet. */
+    public static function statusOptions(): array
+    {
+        return TicketStatus::query()->where('active', true)->ordered()->get()
+            ->mapWithKeys(fn (TicketStatus $s) => [$s->getKey() => $s->name.($s->closes() ? ' (schließt das Ticket)' : '')])
+            ->all();
     }
 
     private function priorityAction(): Action

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Tickets;
 
-use App\Enums\TicketStatus;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
@@ -33,7 +32,7 @@ class TicketResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['tenant', 'contact', 'assignee']);
+        return parent::getEloquentQuery()->with(['tenant', 'contact', 'assignee', 'status', 'category']);
     }
 
     public static function canCreate(): bool
@@ -53,7 +52,7 @@ class TicketResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = Ticket::query()->whereNull('assignee_id')->whereIn('status', TicketStatus::unresolved())->count();
+        $count = Ticket::query()->whereNull('assignee_id')->unresolved()->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -91,7 +90,7 @@ class TicketResource extends Resource
     {
         return array_filter([
             'Mandant' => $record->tenant?->name,
-            'Status' => $record->status?->getLabel(),
+            'Status' => $record->status?->name,
             'Von' => $record->contact?->email,
         ]);
     }

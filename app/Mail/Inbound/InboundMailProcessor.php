@@ -3,7 +3,8 @@
 namespace App\Mail\Inbound;
 
 use App\Enums\MessageType;
-use App\Enums\TicketStatus;
+use App\Enums\StatusBehaviour;
+use App\Models\TicketStatus;
 use App\Models\Attachment;
 use App\Models\Contact;
 use App\Models\Mailbox;
@@ -106,12 +107,15 @@ class InboundMailProcessor
             return [$this->createTicket($mailbox, $email), self::CREATED];
         }
 
-        if ($existing->status === TicketStatus::Closed) {
+        $status = $existing->status;
+
+        // Beim Status einstellbar: Antwort auf ein geschlossenes Ticket öffnet es wieder oder erzeugt ein neues
+        if ($status->closes() && $status->reply_creates_new_ticket) {
             return [$this->createTicket($mailbox, $email, followUpOf: $existing), self::FOLLOW_UP];
         }
 
-        if (in_array($existing->status, [TicketStatus::Solved, ...TicketStatus::pending()], true)) {
-            $existing->changeStatus(TicketStatus::Open);
+        if (in_array($status->behaviour, [StatusBehaviour::Closed, StatusBehaviour::Pending], true)) {
+            $existing->changeStatus(TicketStatus::OPEN);
 
             return [$existing, self::REOPENED];
         }

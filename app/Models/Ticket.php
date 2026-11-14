@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TicketPriority;
-use App\Enums\TicketStatus;
+use App\Enums\StatusBehaviour;
 use App\Support\TicketNumber;
 use App\Tenancy\BelongsToTenant;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -17,23 +17,21 @@ class Ticket extends Model
 {
     use BelongsToTenant;
 
-    protected $attributes = ['status' => 'new', 'priority' => 'normal', 'channel' => 'email'];
+    protected $attributes = ['priority' => 'normal', 'channel' => 'email'];
 
     protected $fillable = [
-        'tenant_id', 'subject', 'status', 'priority', 'channel', 'mailbox_id', 'team_id', 'contact_id',
+        'tenant_id', 'subject', 'status_id', 'category_id', 'priority', 'channel', 'mailbox_id', 'team_id', 'contact_id',
         'assignee_id', 'follow_up_of_id', 'last_customer_message_at', 'last_agent_message_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'status' => TicketStatus::class,
             'priority' => TicketPriority::class,
             'number' => 'integer',
             'last_customer_message_at' => 'datetime',
             'last_agent_message_at' => 'datetime',
             'first_response_at' => 'datetime',
-            'solved_at' => 'datetime',
             'closed_at' => 'datetime',
         ];
     }
@@ -43,10 +41,21 @@ class Ticket extends Model
         // Läuft nach dem creating-Hook von BelongsToTenant, der den Mandanten prüft
         static::creating(function (Ticket $ticket) {
             $ticket->number ??= TicketNumber::next();
+            $ticket->status_id ??= TicketStatus::system(TicketStatus::NEW)->getKey();
         });
     }
 
     // ---------------------------------------------------------------- Beziehungen
+
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(TicketStatus::class, 'status_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(TicketCategory::class, 'category_id');
+    }
 
     public function contact(): BelongsTo
     {
@@ -90,9 +99,20 @@ class Ticket extends Model
 
     // ---------------------------------------------------------------- Abfragen
 
+    /** Tickets, die nicht durch ihren Status geschlossen sind */
     public function scopeUnresolved(Builder $query): Builder
     {
-        return $query->whereIn('status', TicketStatus::unresolved());
+        return $query->whereIn('status_id', TicketStatus::idsWith(StatusBehaviour::Open, StatusBehaviour::Pending));
+    }
+
+    public function scopeWithBehaviour(Builder $query, StatusBehaviour ...$behaviours): Builder
+    {
+        return $query->whereIn('status_id', TicketStatus::idsWith(...$behaviours));
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->status?->closes() ?? false;
     }
 
     // ---------------------------------------------------------------- Anzeige
@@ -142,28 +162,44 @@ class Ticket extends Model
         $previous = $this->assignee_id;
         $this->assignee_id = $user?->getKey();
 
-        if ($user && $this->status === TicketStatus::New) {
-            $this->status = TicketStatus::Open;
+        if ($user && $this->status?->system_key === TicketStatus::NEW) {
+            $this->status()->associate(TicketStatus::system(TicketStatus::OPEN));
         }
 
         $this->save();
         $this->logEvent('assigned', $actor, ['from' => $previous, 'to' => $user?->getKey()]);
     }
 
-    public function changeStatus(TicketStatus $status, ?User $actor = null): void
+    public function changeStatus(TicketStatus|string $status, ?User $actor = null): void
     {
-        if ($this->status === $status) {
+        $status = is_string($status) ? TicketStatus::system($status) : $status;
+
+        if ($this->status_id === $status->getKey()) {
             return;
         }
 
         $previous = $this->status;
-        $this->status = $status;
-
-        $this->solved_at = $status === TicketStatus::Solved ? now() : ($status === TicketStatus::Closed ? $this->solved_at : null);
-        $this->closed_at = $status === TicketStatus::Closed ? now() : null;
+        $this->status()->associate($status);
+        $this->closed_at = $status->closes() ? ($previous?->closes() ? $this->closed_at : now()) : null;
 
         $this->save();
-        $this->logEvent('status', $actor, ['from' => $previous?->value, 'to' => $status->value]);
+        $this->logEvent('status', $actor, ['from' => $previous?->name, 'to' => $status->name]);
+    }
+
+    public function changeCategory(?TicketCategory $category, ?User $actor = null): void
+    {
+        if ($category && ! $category->appliesTo((int) $this->tenant_id)) {
+            throw new AuthorizationException('Diese Kategorie gehört zu einem anderen Mandanten.');
+        }
+
+        if ($this->category_id === $category?->getKey()) {
+            return;
+        }
+
+        $previous = $this->category;
+        $this->category()->associate($category);
+        $this->save();
+        $this->logEvent('category', $actor, ['from' => $previous?->name, 'to' => $category?->name]);
     }
 
     public function changePriority(TicketPriority $priority, ?User $actor = null): void

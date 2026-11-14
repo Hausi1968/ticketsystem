@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Tickets\Tables;
 
 use App\Enums\TicketPriority;
-use App\Enums\TicketStatus;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\Ticket;
+use App\Models\TicketCategory;
+use App\Models\TicketStatus;
+use App\Support\BadgeColor;
 use App\Support\TicketNumber;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Action;
@@ -36,7 +38,11 @@ class TicketsTable
                         : $query),
                 TextColumn::make('subject')->label('Betreff')->searchable()->wrap()->limit(80)
                     ->description(fn (Ticket $record) => $record->contact?->label()),
-                TextColumn::make('status')->label('Status')->badge()->sortable(),
+                TextColumn::make('status.name')->label('Status')->badge()
+                    ->color(fn (Ticket $record) => BadgeColor::resolve($record->status?->color)),
+                TextColumn::make('category.name')->label('Kategorie')->badge()->placeholder('–')
+                    ->color(fn (Ticket $record) => BadgeColor::resolve($record->category?->color))
+                    ->toggleable(),
                 TextColumn::make('priority')->label('Priorität')->badge()->sortable(),
                 TextColumn::make('assignee.name')->label('Bearbeiter')->placeholder('– niemand –'),
                 TextColumn::make('updated_at')->label('Aktualisiert')->since()->sortable()
@@ -49,7 +55,11 @@ class TicketsTable
                     ->options(fn () => Team::query()->with('tenant')->orderBy('name')->get()
                         ->mapWithKeys(fn (Team $t) => [$t->id => "{$t->name} ({$t->tenant->short_code})"])),
                 SelectFilter::make('priority')->label('Priorität')->options(TicketPriority::class),
-                SelectFilter::make('status')->label('Status')->options(TicketStatus::class)->multiple(),
+                SelectFilter::make('status_id')->label('Status')->multiple()
+                    ->options(fn () => TicketStatus::query()->ordered()->pluck('name', 'id')),
+                SelectFilter::make('category_id')->label('Kategorie')->multiple()
+                    ->options(fn () => TicketCategory::query()->with('tenant')->ordered()->get()
+                        ->mapWithKeys(fn (TicketCategory $c) => [$c->id => $c->name.($c->tenant ? " ({$c->tenant->short_code})" : '')])),
             ])
             ->recordActions([
                 self::takeAction(),
@@ -60,7 +70,7 @@ class TicketsTable
     {
         return Action::make('take')->label('Übernehmen')->icon(Heroicon::OutlinedHandRaised)
             ->visible(fn (Ticket $record) => $record->assignee_id !== auth()->id()
-                && in_array($record->status, TicketStatus::unresolved(), true))
+                && ! $record->isClosed())
             ->requiresConfirmation(fn (Ticket $record) => $record->assignee_id !== null)
             ->modalDescription(fn (Ticket $record) => $record->assignee
                 ? "Das Ticket ist {$record->assignee->name} zugewiesen. Trotzdem übernehmen?" : null)

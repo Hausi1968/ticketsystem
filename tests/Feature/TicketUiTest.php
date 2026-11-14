@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\TicketStatus;
+use App\Models\TicketStatus;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Mail\Inbound\InboundMailProcessor;
@@ -54,7 +54,7 @@ it('lässt ein Ticket übernehmen', function () {
         ->callTableAction('take', $this->ticketA);
 
     expect($this->ticketA->fresh()->assignee_id)->toBe($this->agentA->id)
-        ->and($this->ticketA->fresh()->status)->toBe(TicketStatus::Open);
+        ->and($this->ticketA->fresh()->status->system_key)->toBe(TicketStatus::OPEN);
 });
 
 it('öffnet fremde Tickets nicht', function () {
@@ -77,12 +77,12 @@ it('sendet eine Antwort aus der Ticketansicht', function () {
     $this->actingAs($this->agentA);
 
     Livewire::test(ViewTicket::class, ['record' => $this->ticketA->id])
-        ->callAction('reply', data: ['body' => 'Danke, ist notiert.', 'cc' => [], 'status' => TicketStatus::PendingCustomer->value])
+        ->callAction('reply', data: ['body' => 'Danke, ist notiert.', 'cc' => [], 'status_id' => TicketStatus::system(TicketStatus::WAITING)->id])
         ->assertHasNoActionErrors();
 
     expect($this->smtp->sent)->toHaveCount(1)
         ->and($this->smtp->last()->getTo()[0]->getAddress())->toBe('erika@kunde.de')
-        ->and($this->ticketA->fresh()->status)->toBe(TicketStatus::PendingCustomer);
+        ->and($this->ticketA->fresh()->status->system_key)->toBe(TicketStatus::WAITING);
 });
 
 it('speichert interne Notizen ohne Versand', function () {

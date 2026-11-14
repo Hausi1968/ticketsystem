@@ -567,7 +567,9 @@ stateDiagram-v2
 | Gelöst | gestoppt | Lösung mitgeteilt, Kunde kann noch reagieren |
 | Geschlossen | gestoppt | Endgültig, nur noch lesbar; neue Mail erzeugt neues Ticket |
 
-Statusnamen sind pro Mandant umbenennbar; die **Statuskategorie** (neu/offen/wartend/gelöst/geschlossen) bleibt fest, damit SLAs und Berichte über alle Mandanten gleich funktionieren. Zusätzlich: **Zusammenführen** von Tickets (Duplikate), **Verknüpfen** (verwandte Tickets), **Aufteilen** (eine Nachricht in neues Ticket).
+**Eigene Status (Festlegung 14.11.2026):** Administratoren legen Status unter *Verwaltung → Status* selbst an. Jeder Status hat einen Namen, eine Farbe und ein **Verhalten**: *bleibt offen*, *wartet* oder *schließt das Ticket*. Bei schließenden Status lässt sich zusätzlich einstellen, ob eine Kundenantwort das Ticket wieder öffnet oder ein neues Ticket anlegt. Die Status in der Tabelle oben sind vorbelegt. Neu, Offen, Wartet auf Kunde und Gelöst setzt Anliego selbst; sie lassen sich umbenennen, aber nicht löschen und im Verhalten nicht ändern. Listen, SLAs und Berichte richten sich nach dem Verhalten, nicht nach dem Namen.
+
+**Kategorien:** Unter *Verwaltung → Kategorien* frei anlegbar, entweder für einen Mandanten (z. B. „Bestellung“, „Reklamation“) oder für alle Mandanten. Im Ticket über *Bearbeiten → Kategorie* gesetzt und in der Ticketliste filterbar. Zusätzlich: **Zusammenführen** von Tickets (Duplikate), **Verknüpfen** (verwandte Tickets), **Aufteilen** (eine Nachricht in neues Ticket).
 
 ## 11. SLAs
 

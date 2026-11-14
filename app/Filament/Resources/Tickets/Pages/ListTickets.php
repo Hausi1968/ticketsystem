@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Tickets\Pages;
 
-use App\Enums\TicketStatus;
+use App\Enums\StatusBehaviour;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\Ticket;
 use Filament\Resources\Pages\ListRecords;
@@ -15,23 +15,20 @@ class ListTickets extends ListRecords
 
     public function getTabs(): array
     {
-        $unresolved = TicketStatus::unresolved();
-        $active = [TicketStatus::New, TicketStatus::Open];
-
         return [
             'mine' => Tab::make('Meine')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('assignee_id', auth()->id())->whereIn('status', $unresolved))
-                ->badge(fn () => Ticket::query()->where('assignee_id', auth()->id())->whereIn('status', $active)->count() ?: null),
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('assignee_id', auth()->id())->unresolved())
+                ->badge(fn () => Ticket::query()->where('assignee_id', auth()->id())->withBehaviour(StatusBehaviour::Open)->count() ?: null),
             'unassigned' => Tab::make('Unzugewiesen')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('assignee_id')->whereIn('status', $unresolved))
-                ->badge(fn () => Ticket::query()->whereNull('assignee_id')->whereIn('status', $unresolved)->count() ?: null)
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('assignee_id')->unresolved())
+                ->badge(fn () => Ticket::query()->whereNull('assignee_id')->unresolved()->count() ?: null)
                 ->badgeColor('warning'),
             'open' => Tab::make('Alle offenen')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', $active)),
+                ->modifyQueryUsing(fn (Builder $query) => $query->withBehaviour(StatusBehaviour::Open)),
             'pending' => Tab::make('Wartend')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', TicketStatus::pending())),
-            'solved' => Tab::make('Gelöst')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', [TicketStatus::Solved, TicketStatus::Closed])),
+                ->modifyQueryUsing(fn (Builder $query) => $query->withBehaviour(StatusBehaviour::Pending)),
+            'closed' => Tab::make('Geschlossen')
+                ->modifyQueryUsing(fn (Builder $query) => $query->withBehaviour(StatusBehaviour::Closed)),
             'all' => Tab::make('Alle'),
         ];
     }
@@ -39,7 +36,7 @@ class ListTickets extends ListRecords
     public function getDefaultActiveTab(): string|int|null
     {
         // Wer nichts zugewiesen hat, startet in der Eingangs-Queue
-        return Ticket::query()->where('assignee_id', auth()->id())->whereIn('status', TicketStatus::unresolved())->exists()
+        return Ticket::query()->where('assignee_id', auth()->id())->unresolved()->exists()
             ? 'mine' : 'unassigned';
     }
 }

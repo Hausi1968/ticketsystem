@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\MessageType;
-use App\Enums\TicketStatus;
+use App\Models\TicketStatus;
 use App\Mail\Inbound\InboundMailProcessor;
 use App\Models\Attachment;
 use App\Models\MailReceipt;
@@ -37,7 +37,7 @@ it('legt aus einer neuen E-Mail ein Ticket mit Kontakt und Nachricht an', functi
     expect($ticket->tenant_id)->toBe($this->tenant->id)
         ->and($ticket->number)->toBe(1000)
         ->and($ticket->subject)->toBe('Bestellung 4711')
-        ->and($ticket->status)->toBe(TicketStatus::New)
+        ->and($ticket->status->system_key)->toBe(TicketStatus::NEW)
         ->and($ticket->team_id)->toBe($this->team->id)
         ->and($ticket->contact->email)->toBe('erika@kunde.de')
         ->and($ticket->contact->name)->toBe('Erika Muster')
@@ -121,19 +121,19 @@ it('ordnet über References keine Tickets eines anderen Mandanten zu', function 
 
 it('öffnet ein gelöstes Ticket bei einer Antwort wieder', function () {
     process($this->mailbox, rawMail(['id' => 's1@kunde.de']));
-    app(TenantContext::class)->runFor($this->tenant, fn () => Ticket::sole()->changeStatus(TicketStatus::Solved));
+    app(TenantContext::class)->runFor($this->tenant, fn () => Ticket::sole()->changeStatus(TicketStatus::SOLVED));
 
     $receipt = process($this->mailbox, rawMail(['in_reply_to' => '<s1@kunde.de>']));
 
     expect($receipt->outcome)->toBe('reopened')
-        ->and(allTickets()->sole()->status)->toBe(TicketStatus::Open);
+        ->and(allTickets()->sole()->status->system_key)->toBe(TicketStatus::OPEN);
 });
 
 it('legt bei Antwort auf ein geschlossenes Ticket ein Folgeticket an', function () {
     process($this->mailbox, rawMail(['id' => 'c1@kunde.de']));
     $closed = app(TenantContext::class)->runFor($this->tenant, function () {
         $ticket = Ticket::sole();
-        $ticket->changeStatus(TicketStatus::Closed);
+        $ticket->changeStatus(TicketStatus::where('name', 'Geschlossen')->sole());
 
         return $ticket;
     });

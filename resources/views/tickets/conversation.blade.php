@@ -43,8 +43,8 @@
                         'assigned' => $e->data['to'] ?? null
                             ? "{$who} hat das Ticket ".($userNames[$e->data['to']] ?? 'jemandem').' zugewiesen'
                             : "{$who} hat die Zuweisung entfernt",
-                        'status' => "{$who}: Status ".(\App\Enums\TicketStatus::tryFrom($e->data['from'] ?? '')?->getLabel() ?? '–')
-                            .' → '.(\App\Enums\TicketStatus::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),
+                        'status' => "{$who}: Status ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
+                        'category' => "{$who}: Kategorie ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'priority' => "{$who}: Priorität → ".(\App\Enums\TicketPriority::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),
                         default => "{$who}: {$e->type}",
                     };
@@ -129,7 +129,8 @@
             <x-slot name="heading">Details</x-slot>
             <dl class="anl-dl">
                 <dt>Mandant</dt><dd>{{ $ticket->tenant->name }}</dd>
-                <dt>Status</dt><dd><x-filament::badge :color="$ticket->status->getColor()" style="display:inline-flex">{{ $ticket->status->getLabel() }}</x-filament::badge></dd>
+                <dt>Status</dt><dd><x-filament::badge :color="\App\Support\BadgeColor::resolve($ticket->status->color)" style="display:inline-flex">{{ $ticket->status->name }}</x-filament::badge></dd>
+                <dt>Kategorie</dt><dd>@if ($ticket->category)<x-filament::badge :color="\App\Support\BadgeColor::resolve($ticket->category->color)" style="display:inline-flex">{{ $ticket->category->name }}</x-filament::badge>@else – @endif</dd>
                 <dt>Priorität</dt><dd><x-filament::badge :color="$ticket->priority->getColor()" style="display:inline-flex">{{ $ticket->priority->getLabel() }}</x-filament::badge></dd>
                 <dt>Bearbeiter</dt><dd>{{ $ticket->assignee?->name ?? '– niemand –' }}</dd>
                 <dt>Team</dt><dd>{{ $ticket->team?->name ?? '–' }}</dd>

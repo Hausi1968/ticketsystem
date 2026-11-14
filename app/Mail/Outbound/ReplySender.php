@@ -3,12 +3,12 @@
 namespace App\Mail\Outbound;
 
 use App\Enums\MessageType;
-use App\Enums\TicketStatus;
 use App\Jobs\DeliverTicketMessage;
 use App\Models\Attachment;
 use App\Models\Mailbox;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Models\TicketStatus;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -64,7 +64,7 @@ class ReplySender
                 $ticket->assignTo($agent, $agent);
             }
 
-            $ticket->changeStatus($newStatus ?? TicketStatus::PendingCustomer, $agent);
+            $ticket->changeStatus($newStatus ?? TicketStatus::WAITING, $agent);
 
             return $message;
         });

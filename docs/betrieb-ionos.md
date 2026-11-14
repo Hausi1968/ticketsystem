@@ -82,7 +82,7 @@ Die Übersicht in Anliego zeigt unter **Cronjob**, wann er zuletzt gelaufen ist.
 
 1. `https://tickets.deine-domain.de` öffnen und mit dem Administrator-Zugang anmelden.
 2. Die Zwei-Faktor-Anmeldung mit einer Authenticator-App (z. B. Microsoft Authenticator, Google Authenticator, 2FAS) einrichten. Sie ist für alle Mitarbeiter Pflicht. Die Wiederherstellungscodes sicher aufbewahren.
-3. Unter *Verwaltung* Mandanten, Mitarbeiter und Teams anlegen.
+3. Unter *Verwaltung* Mandanten, Mitarbeiter und Teams anlegen. Unter *Status* und *Kategorien* die Status (mit „schließt das Ticket ja/nein“) und Ticketkategorien nach Bedarf anpassen.
 
 ## 9. Postfächer anbinden
 

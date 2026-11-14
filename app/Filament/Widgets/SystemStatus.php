@@ -3,7 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Console\Commands\Heartbeat;
-use App\Enums\TicketStatus;
+use App\Enums\StatusBehaviour;
 use App\Models\Mailbox;
 use App\Models\Tenant;
 use App\Models\Ticket;
@@ -28,8 +28,8 @@ class SystemStatus extends StatsOverviewWidget
             Stat::make('Cronjob', $ok ? 'läuft' : 'prüfen')
                 ->description($lastRun ? 'zuletzt '.$lastRun->timezone('Europe/Berlin')->format('d.m.Y H:i') : 'noch nie gelaufen')
                 ->color($ok ? 'success' : 'danger'),
-            Stat::make('Offene Tickets', Ticket::query()->whereIn('status', [TicketStatus::New, TicketStatus::Open])->count())
-                ->description(Ticket::query()->whereNull('assignee_id')->whereIn('status', TicketStatus::unresolved())->count().' unzugewiesen'),
+            Stat::make('Offene Tickets', Ticket::query()->withBehaviour(StatusBehaviour::Open)->count())
+                ->description(Ticket::query()->whereNull('assignee_id')->unresolved()->count().' unzugewiesen'),
             Stat::make('Postfächer', Mailbox::query()->where('active', true)->count())
                 ->description(($failing = Mailbox::query()->whereNotNull('last_error')->count()) > 0 ? "{$failing} mit Abruffehler" : 'alle ok')
                 ->color(($failing ?? 0) > 0 ? 'danger' : 'success'),

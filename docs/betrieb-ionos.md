@@ -54,7 +54,7 @@ Im Repository → *Settings* → *Secrets and variables* → *Actions*:
 | Secret | `IONOS_TARGET_DIR` | Pfad des Ordners, z. B. `/anliego` |
 | Secret | `ANLIEGO_DEPLOY_TOKEN` | derselbe Wert wie in der `.env` |
 | Variable | `ANLIEGO_URL` | `https://tickets.deine-domain.de` |
-| Variable | `DEPLOY_ON_PUSH` | `true`, wenn jede Änderung auf `main` automatisch live gehen soll (sonst weglassen) |
+| Variable | `DEPLOY_ON_PUSH` | `true`, wenn jede Änderung auf `claude/ticketsystem/main` automatisch live gehen soll (sonst weglassen) |
 
 Unter *Settings* → *Environments* wird die Umgebung `production` beim ersten Lauf automatisch angelegt. Dort lässt sich auf Wunsch eine Freigabe vor jedem Deploy einstellen.
 

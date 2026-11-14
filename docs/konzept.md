@@ -93,7 +93,7 @@ Plattform
 
 **Dienstleister-Modell (entschieden):** Alle Agenten gehören zum Team des Auftraggebers und arbeiten für mehrere Mandanten. Ein Mitarbeiter loggt sich einmal ein und sieht eine **gemeinsame Arbeitsliste über alle Mandanten**, in der jedes Ticket deutlich mit seinem Mandanten (Name, Farbe, Kürzel) gekennzeichnet ist; filtern nach Mandant ist jederzeit möglich. Mandanten haben keine eigenen Agenten-Zugänge.
 
-Technisch bleibt trotzdem die Tabelle `tenant_memberships` (Nutzer × Mandant × Rolle): Standardmäßig ist jeder Agent Mitglied aller Mandanten, man kann aber einzelne Mitarbeiter auf bestimmte Mandanten beschränken. Falls ein Mandant später doch eigene Zugänge bekommen soll, ist das ohne Umbau möglich.
+Technisch bleibt trotzdem die Tabelle `tenant_memberships` (Nutzer × Mandant × Rolle): Jeder Mitarbeiter wird den Mandanten zugeordnet, die er betreut (einer, mehrere oder alle), und sieht nur deren Tickets. Falls ein Mandant später doch eigene Zugänge bekommen soll, ist das ohne Umbau möglich.
 
 **Trennung trotz gemeinsamer Arbeitsliste:** Mandanten sehen sich nie gegenseitig, und die Daten bleiben strikt getrennt. Besonders wichtig ist das beim Antworten. Eine Antwort geht immer über das Postfach und mit der Absenderadresse des Mandanten, zu dem das Ticket gehört. Kontakte, Vorlagen und Signaturen eines Mandanten lassen sich nicht in Tickets eines anderen Mandanten verwenden, und Tickets können nicht über Mandantengrenzen zusammengeführt werden.
 

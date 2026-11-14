@@ -19,4 +19,6 @@ Schedule::command('anliego:poll-mailboxes')
     ->everyMinute()
     ->withoutOverlapping(15);
 
+Schedule::command('anliego:cleanup')->dailyAt('03:15');
+
 // Später: SLA-Prüfung, automatisches Schließen gelöster Tickets

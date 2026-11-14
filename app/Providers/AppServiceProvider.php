@@ -15,6 +15,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // 60 Anfragen pro Minute und API-Schlüssel
+        \Illuminate\Support\Facades\RateLimiter::for('anliego-api', fn (\Illuminate\Http\Request $request) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)
+            ->by('api-key:'.($request->attributes->get('api_key')?->getKey() ?? $request->ip())));
+
         // Listener in app/Listeners werden automatisch registriert.
     }
 }

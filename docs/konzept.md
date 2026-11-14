@@ -318,6 +318,8 @@ Zusätzlich:
 
 Das ist der Hauptgrund für die Eigenentwicklung: Nutzer eines Mandanten arbeiten in der Anwendung des Auftraggebers. Klappt dort etwas nicht, melden sie es direkt in der Anwendung, ohne eine E-Mail schreiben zu müssen. Das Ticket landet sofort mit allen technischen Angaben beim Team.
 
+> **Umgesetzt (Phase 1b, 14.11.2026):** Anlegen, Anhänge, Idempotency-Key, Abruf der eigenen Meldungen mit Verlauf. Die verbindliche Beschreibung der Endpunkte steht in [docs/api.md](api.md); Webhooks bei Statusänderungen folgen später.
+
 ### 6a.1 Ablauf
 
 ```mermaid

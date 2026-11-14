@@ -134,6 +134,7 @@
                 <dt>Priorität</dt><dd><x-filament::badge :color="$ticket->priority->getColor()" style="display:inline-flex">{{ $ticket->priority->getLabel() }}</x-filament::badge></dd>
                 <dt>Bearbeiter</dt><dd>{{ $ticket->assignee?->name ?? '– niemand –' }}</dd>
                 <dt>Team</dt><dd>{{ $ticket->team?->name ?? '–' }}</dd>
+                <dt>Eingang</dt><dd>{{ $ticket->channel === 'api' ? 'Anwendung (API)' : 'E-Mail' }}</dd>
                 <dt>Postfach</dt><dd>{{ $ticket->mailbox?->email ?? '–' }}</dd>
                 <dt>Erstellt</dt><dd>{{ $ticket->created_at?->timezone($tz)->format('d.m.Y H:i') }}</dd>
                 @if ($ticket->followUpOf)
@@ -143,11 +144,31 @@
             </dl>
         </x-filament::section>
 
+        @if (! empty($ticket->context))
+            @php
+                $labels = ['url' => 'Seite', 'app_version' => 'Version', 'browser' => 'Browser', 'os' => 'System', 'device' => 'Gerät',
+                    'error_message' => 'Fehler', 'correlation_id' => 'Korrelations-ID', 'occurred_at' => 'Zeitpunkt', 'role' => 'Rolle'];
+            @endphp
+            <x-filament::section>
+                <x-slot name="heading">Technische Details</x-slot>
+                <x-slot name="description">Von der Anwendung mitgeschickt, nur intern sichtbar</x-slot>
+                <dl class="anl-dl">
+                    @foreach ($ticket->context as $key => $value)
+                        <dt>{{ $labels[$key] ?? $key }}</dt>
+                        <dd style="word-break:break-all; font-family: ui-monospace, monospace; font-size: .8rem">{{ is_scalar($value) ? $value : json_encode($value) }}</dd>
+                    @endforeach
+                </dl>
+            </x-filament::section>
+        @endif
+
         <x-filament::section>
             <x-slot name="heading">Anfragende Person</x-slot>
             <dl class="anl-dl">
                 <dt>Name</dt><dd>{{ $ticket->contact->name ?? '–' }}</dd>
                 <dt>E-Mail</dt><dd style="word-break:break-all">{{ $ticket->contact->email }}</dd>
+                @if ($ticket->contact->external_user_id)
+                    <dt>Nutzer-ID</dt><dd style="word-break:break-all">{{ $ticket->contact->external_user_id }}</dd>
+                @endif
                 @if ($ticket->participants->isNotEmpty())
                     <dt>Beteiligt</dt><dd style="word-break:break-all">{{ $ticket->participants->pluck('email')->join(', ') }}</dd>
                 @endif

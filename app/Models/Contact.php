@@ -10,7 +10,7 @@ class Contact extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['tenant_id', 'email', 'name'];
+    protected $fillable = ['tenant_id', 'email', 'name', 'external_user_id'];
 
     protected static function booted(): void
     {

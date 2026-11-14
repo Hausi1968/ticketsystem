@@ -6,6 +6,7 @@ Mandantenfähiges Ticketsystem: Ein Team betreut die Anliegen mehrerer Mandanten
 
 - **Konzept und Architektur:** [docs/konzept.md](docs/konzept.md)
 - **Betrieb auf IONOS-Webhosting:** [docs/betrieb-ionos.md](docs/betrieb-ionos.md)
+- **Ticket-Schnittstelle für Anwendungen:** [docs/api.md](docs/api.md), PHP-Client in [clients/php](clients/php/AnliegoClient.php)
 
 ## Stand
 
@@ -13,7 +14,9 @@ Phase 0 (Fundament): Mandanten, Mitarbeiter mit Zuordnung zu mehreren Mandanten,
 
 Phase 1a (Tickets und E-Mail): Postfächer je Mandant mit IMAP-Abruf per Cronjob (Intervall je Postfach), Zuordnung von Antworten zum richtigen Ticket, Schutz vor Dubletten und Abwesenheitsnotizen, Antworten per SMTP im selben E-Mail-Verlauf, interne Notizen, Anhänge, gemeinsame Arbeitsliste über alle betreuten Mandanten mit „Übernehmen“.
 
-Als Nächstes: Benachrichtigungen, SLAs, Ticket-API für Apps.
+Phase 1b (Ticket-API): API-Schlüssel je Mandant, Tickets aus Anwendungen mit Anhängen, technischen Details und Schutz vor Doppelmeldungen, Abruf der eigenen Meldungen mit Verlauf (ohne interne Notizen).
+
+Als Nächstes: Benachrichtigungen, SLAs, Eingangsbestätigung.
 
 ## Technik
 

@@ -19,4 +19,7 @@ return [
 
     // Nach wie vielen Minuten ohne Cronjob-Lauf eine Warnung angezeigt wird
     'cron_warning_minutes' => env('ANLIEGO_CRON_WARNING_MINUTES', 10),
+
+    // Größte Datei, die über die API hochgeladen werden darf (MB)
+    'api_max_upload_mb' => (int) env('ANLIEGO_API_MAX_UPLOAD_MB', 100),
 ];

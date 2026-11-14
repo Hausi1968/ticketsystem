@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DeployController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -9,3 +10,9 @@ use Illuminate\Support\Facades\Route;
 Route::post('/_deploy/migrate', DeployController::class)
     ->middleware('throttle:5,1')
     ->withoutMiddleware(VerifyCsrfToken::class);
+
+// Anhänge (nur angemeldet; Mandantentrennung über das Modell)
+Route::get('/anhaenge/{attachment}', AttachmentController::class)
+    ->whereNumber('attachment')
+    ->middleware(['auth'])
+    ->name('attachments.show');

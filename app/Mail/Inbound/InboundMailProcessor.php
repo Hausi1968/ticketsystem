@@ -175,9 +175,10 @@ class InboundMailProcessor
     {
         $contact = Contact::findOrCreateFor((int) $ticket->tenant_id, $email->fromEmail, $email->fromName);
 
-        // CC-Empfänger dürfen mitlesen und antworten (außer den eigenen Postfächern)
+        // CC-Empfänger dürfen mitlesen und antworten (außer den eigenen Postfächern). An-Empfänger
+        // werden bewusst nicht übernommen: Dort steht meist unsere eigene Adresse oder ein Alias davon.
         $ownAddresses = Mailbox::query()->withoutGlobalScopes()->pluck('email')->all();
-        foreach ([...$email->cc, ...$email->to] as $recipient) {
+        foreach ($email->cc as $recipient) {
             if (! in_array($recipient['email'], $ownAddresses, true)) {
                 $ticket->addParticipant(Contact::findOrCreateFor((int) $ticket->tenant_id, $recipient['email'], $recipient['name']));
             }

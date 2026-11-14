@@ -9,7 +9,11 @@ Mandantenfähiges Ticketsystem: Ein Team betreut die Anliegen mehrerer Mandanten
 
 ## Stand
 
-Phase 0 (Fundament): Mandanten, Mitarbeiter mit Zuordnung zu mehreren Mandanten, Teams, Anmeldung mit Zwei-Faktor, strikte Mandantentrennung mit Tests, automatisches Deployment auf IONOS. Tickets, E-Mail und App-Anbindung folgen in Phase 1.
+Phase 0 (Fundament): Mandanten, Mitarbeiter mit Zuordnung zu mehreren Mandanten, Teams, Anmeldung mit Zwei-Faktor, strikte Mandantentrennung mit Tests, automatisches Deployment auf IONOS. 
+
+Phase 1a (Tickets und E-Mail): Postfächer je Mandant mit IMAP-Abruf per Cronjob (Intervall je Postfach), Zuordnung von Antworten zum richtigen Ticket, Schutz vor Dubletten und Abwesenheitsnotizen, Antworten per SMTP im selben E-Mail-Verlauf, interne Notizen, Anhänge, gemeinsame Arbeitsliste über alle betreuten Mandanten mit „Übernehmen“.
+
+Als Nächstes: Benachrichtigungen, SLAs, Ticket-API für Apps.
 
 ## Technik
 

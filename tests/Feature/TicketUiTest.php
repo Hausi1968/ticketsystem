@@ -113,3 +113,27 @@ it('erlaubt die Postfachverwaltung nur Administratoren', function () {
     $this->actingAs($this->agentA)->get('/postfaecher')->assertForbidden();
     $this->actingAs(User::factory()->create(['is_admin' => true]))->get('/postfaecher')->assertOk()->assertSee('auftrag@firma-a.de');
 });
+
+it('vergibt über alle Mandanten eindeutige Ticketnummern', function () {
+    expect($this->ticketA->reference())->toBe('FA-1000')
+        ->and($this->ticketB->reference())->toBe('VB-1001');
+});
+
+it('findet ein Ticket über seine Nummer und öffnet den Verlauf', function () {
+    $this->actingAs(memberOf($this->a, $this->b));
+
+    Livewire::test(ListTickets::class, ['activeTab' => 'all'])
+        ->searchTable('VB-1001')
+        ->assertCanSeeTableRecords([$this->ticketB])
+        ->assertCanNotSeeTableRecords([$this->ticketA]);
+
+    $results = \App\Filament\Resources\Tickets\TicketResource::getGlobalSearchResults('#1000');
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->url)->toEndWith("/tickets/{$this->ticketA->id}");
+});
+
+it('findet über die Nummer keine Tickets fremder Mandanten', function () {
+    $this->actingAs($this->agentA);
+
+    expect(\App\Filament\Resources\Tickets\TicketResource::getGlobalSearchResults('VB-1001'))->toHaveCount(0);
+});

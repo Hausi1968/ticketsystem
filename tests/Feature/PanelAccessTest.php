@@ -2,7 +2,7 @@
 
 use App\Enums\MembershipRole;
 use App\Models\Tenant;
-use App\Models\TenantCounter;
+use App\Support\TicketNumber;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 
@@ -42,13 +42,18 @@ it('erlaubt die Teamverwaltung Supervisoren', function () {
     $this->actingAs(User::factory()->create())->get('/teams')->assertForbidden();
 });
 
-it('vergibt Ticketnummern je Mandant fortlaufend', function () {
-    $a = Tenant::factory()->create();
-    $b = Tenant::factory()->create();
+it('vergibt Ticketnummern fortlaufend und über alle Mandanten eindeutig', function () {
+    expect(TicketNumber::next())->toBe(1000)
+        ->and(TicketNumber::next())->toBe(1001)
+        ->and(TicketNumber::next())->toBe(1002);
+});
 
-    expect(TenantCounter::nextTicketNumber($a->id))->toBe(1000)
-        ->and(TenantCounter::nextTicketNumber($a->id))->toBe(1001)
-        ->and(TenantCounter::nextTicketNumber($b->id))->toBe(1000);
+it('liest Ticketnummern aus Eingaben', function () {
+    expect(TicketNumber::parse('MUS-1000'))->toBe(1000)
+        ->and(TicketNumber::parse('#1000'))->toBe(1000)
+        ->and(TicketNumber::parse('[#MUS-1234]'))->toBe(1234)
+        ->and(TicketNumber::parse('1000'))->toBe(1000)
+        ->and(TicketNumber::parse('Bestellung'))->toBeNull();
 });
 
 it('führt Migrationen über die Deploy-Adresse nur mit gültigem Token aus', function () {

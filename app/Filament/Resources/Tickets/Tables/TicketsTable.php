@@ -7,6 +7,8 @@ use App\Enums\TicketStatus;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\Ticket;
+use App\Support\TicketNumber;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
@@ -28,7 +30,10 @@ class TicketsTable
                     ->formatStateUsing(fn (Ticket $record) => $record->reference())
                     ->color(fn (Ticket $record) => Color::hex($record->tenant->color))
                     ->tooltip(fn (Ticket $record) => $record->tenant->name)
-                    ->searchable(),
+                    // Suche nach "MUS-1000", "#1000" oder "1000"
+                    ->searchable(query: fn (Builder $query, string $search) => ($number = TicketNumber::parse($search)) !== null
+                        ? $query->orWhere('number', $number)
+                        : $query),
                 TextColumn::make('subject')->label('Betreff')->searchable()->wrap()->limit(80)
                     ->description(fn (Ticket $record) => $record->contact?->label()),
                 TextColumn::make('status')->label('Status')->badge()->sortable(),

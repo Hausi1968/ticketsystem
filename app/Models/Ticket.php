@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Support\TicketNumber;
 use App\Tenancy\BelongsToTenant;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,7 +42,7 @@ class Ticket extends Model
     {
         // Läuft nach dem creating-Hook von BelongsToTenant, der den Mandanten prüft
         static::creating(function (Ticket $ticket) {
-            $ticket->number ??= TenantCounter::nextTicketNumber((int) $ticket->tenant_id);
+            $ticket->number ??= TicketNumber::next();
         });
     }
 

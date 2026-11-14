@@ -7,6 +7,7 @@ use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Models\Ticket;
+use App\Support\TicketNumber;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -64,7 +65,35 @@ class TicketResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['subject', 'number', 'contact.email'];
+        return ['subject', 'contact.email'];
+    }
+
+    /** Suche oben rechts: "MUS-1000", "#1000" oder "1000" öffnet das Ticket direkt. */
+    protected static function applyGlobalSearchAttributeConstraints(Builder $query, string $search): void
+    {
+        $number = TicketNumber::parse($search);
+
+        $query->where(function (Builder $query) use ($search, $number) {
+            $query->where(fn (Builder $inner) => parent::applyGlobalSearchAttributeConstraints($inner, $search));
+
+            if ($number !== null) {
+                $query->orWhere('number', $number);
+            }
+        });
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->reference().' · '.$record->subject;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return array_filter([
+            'Mandant' => $record->tenant?->name,
+            'Status' => $record->status?->getLabel(),
+            'Von' => $record->contact?->email,
+        ]);
     }
 
     public static function table(Table $table): Table

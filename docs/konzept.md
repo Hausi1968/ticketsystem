@@ -251,7 +251,7 @@ Alle mandantenbezogenen Tabellen haben `id` (UUID), `tenant_id`, `created_at`, `
 
 ### 5.3 Ticketnummern
 
-Pro Mandant eine eigene, lückenlose Folge (Tabelle `tenant_counters` mit Zeilensperre beim Hochzählen). Optional mit Präfix je Mandant (`ACME-1042`). Die interne UUID bleibt der technische Schlüssel; die Nummer dient Menschen und dem Betreff-Token.
+Eine fortlaufende Nummer über alle Mandanten hinweg, damit jede Nummer genau einmal vorkommt (Tabelle `ticket_sequence` mit Zeilensperre beim Hochzählen; Festlegung 14.11.2026). Angezeigt wird sie mit dem Kürzel des Mandanten (`MUS-1042`). Über die Suche öffnet die Eingabe der Nummer (`MUS-1042`, `#1042` oder `1042`) direkt das Ticket mit seinem Verlauf. Die Nummer dient Menschen und dem Betreff-Token.
 
 ## 6. E-Mail-Eingang
 

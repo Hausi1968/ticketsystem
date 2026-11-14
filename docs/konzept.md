@@ -1,8 +1,17 @@
 # Ticketsystem – Konzept und Architektur
 
-Stand: 14.11.2026 · Status: Entwurf zur Abstimmung
+Stand: 14.11.2026 · Status: Entwurf zur Abstimmung, Rahmen geklärt
 
-Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsystem. Tickets entstehen aus eingehenden E-Mails (und später weiteren Kanälen), werden Mitarbeitern bzw. Teams zugewiesen und per E-Mail beantwortet. Es legt die Grundentscheidungen fest, die später teuer zu ändern sind: Mandantentrennung, Datenmodell, E-Mail-Verarbeitung, Rechte und Technik. Offene Punkte, die nur der Auftraggeber entscheiden kann, stehen gesammelt in [Abschnitt 14](#14-offene-fragen).
+Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsystem. Tickets entstehen aus eingehenden E-Mails und direkt aus der Anwendung der Mandanten, werden Mitarbeitern bzw. Teams zugewiesen und per E-Mail beantwortet. Es legt die Grundentscheidungen fest, die später teuer zu ändern sind: Mandantentrennung, Datenmodell, E-Mail-Verarbeitung, Rechte und Technik. Offene Punkte stehen gesammelt in [Abschnitt 14](#14-offene-fragen).
+
+### Geklärter Rahmen (14.11.2026)
+
+| Punkt | Entscheidung | Folge für das Konzept |
+|---|---|---|
+| Wer bearbeitet Tickets? | **Nur das eigene Team** bearbeitet die Tickets aller Mandanten (Dienstleister-Modell). | Mandanten bekommen keine Agenten-Zugänge. Jeder Agent arbeitet mandantenübergreifend; eine gemeinsame Arbeitsliste über alle Mandanten ist die Hauptansicht. |
+| Größe | **ca. 5 Mandanten, 2–10 Mitarbeiter** | Ein Server reicht; keine Clusterlösung, keine eigene Suchmaschine. Einfache Lösungen haben Vorrang. |
+| Entwicklung und Betrieb | **Der Auftraggeber selbst** (mit Claude) | Möglichst wenig Bausteine, die betrieben werden müssen; ein Repository, ein Deployment. |
+| Eigenentwicklung? | **Ja.** Hauptgrund: Nutzer der Mandanten sollen aus einer eigenen, mit Claude erstellten Anwendung heraus Tickets anlegen, wenn dort etwas nicht klappt. | Neuer, gleichwertiger Kanal **„App“** neben E-Mail, mit eigener API (siehe [Abschnitt 6a](#6a-ticket-anlage-aus-der-anwendung)). |
 
 ---
 
@@ -14,6 +23,8 @@ Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsyste
 4. [Systemarchitektur](#4-systemarchitektur)
 5. [Datenmodell](#5-datenmodell)
 6. [E-Mail-Eingang](#6-e-mail-eingang)
+6a. [Ticket-Anlage aus der Anwendung](#6a-ticket-anlage-aus-der-anwendung)
+6b. [Anhänge](#6b-anhänge)
 7. [E-Mail-Ausgang](#7-e-mail-ausgang)
 8. [Rollen und Berechtigungen](#8-rollen-und-berechtigungen)
 9. [Queues und Zuweisung](#9-queues-und-zuweisung)
@@ -33,6 +44,7 @@ Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsyste
 
 - Mehrere Mandanten auf einer Plattform, strikt voneinander getrennt.
 - Jeder Mandant hat eigene Postfächer; eingehende Mails werden automatisch zu Tickets oder an bestehende Tickets angehängt.
+- Nutzer der Mandanten können direkt aus der Anwendung des Auftraggebers ein Ticket melden; technische Angaben (Seite, Fehlermeldung, Version) werden automatisch mitgeschickt.
 - Antworten an Kunden gehen als normale E-Mail im Namen des Mandanten raus und landen korrekt im Gesprächsverlauf des Kunden.
 - Tickets lassen sich Teams (Queues) und einzelnen Mitarbeitern zuweisen, manuell oder automatisch.
 - Nachvollziehbarkeit: vollständige Historie jedes Tickets, Audit-Log für administrative Änderungen.
@@ -76,9 +88,11 @@ Plattform
            └── Nachrichten, Anhänge, Ereignisse
 ```
 
-**Agenten können mehreren Mandanten angehören.** Das ist der typische Fall, wenn ein Dienstleister den Support für mehrere Kunden übernimmt: ein Mitarbeiter loggt sich einmal ein und wechselt zwischen Mandanten (oder sieht eine mandantenübergreifende Arbeitsliste, sofern berechtigt). Technisch wird das über eine Tabelle `tenant_memberships` (Nutzer × Mandant × Rolle) gelöst, nicht über Kopien des Nutzers.
+**Dienstleister-Modell (entschieden):** Alle Agenten gehören zum Team des Auftraggebers und arbeiten für mehrere Mandanten. Ein Mitarbeiter loggt sich einmal ein und sieht eine **gemeinsame Arbeitsliste über alle Mandanten**, in der jedes Ticket deutlich mit seinem Mandanten (Name, Farbe, Kürzel) gekennzeichnet ist; filtern nach Mandant ist jederzeit möglich. Mandanten haben keine eigenen Agenten-Zugänge.
 
-Ob die Mandanten eigene Mitarbeiter mitbringen (klassisches SaaS) oder ob ausschließlich das Team des Auftraggebers arbeitet (Dienstleister-Modell), ist eine offene Frage (F1). Das Modell trägt beides.
+Technisch bleibt trotzdem die Tabelle `tenant_memberships` (Nutzer × Mandant × Rolle): Standardmäßig ist jeder Agent Mitglied aller Mandanten, man kann aber einzelne Mitarbeiter auf bestimmte Mandanten beschränken. Falls ein Mandant später doch eigene Zugänge bekommen soll, ist das ohne Umbau möglich.
+
+**Trennung trotz gemeinsamer Arbeitsliste:** Mandanten sehen sich nie gegenseitig, und die Daten bleiben strikt getrennt. Besonders wichtig ist das beim Antworten. Eine Antwort geht immer über das Postfach und mit der Absenderadresse des Mandanten, zu dem das Ticket gehört. Kontakte, Vorlagen und Signaturen eines Mandanten lassen sich nicht in Tickets eines anderen Mandanten verwenden, und Tickets können nicht über Mandantengrenzen zusammengeführt werden.
 
 ### 3.2 Varianten der Datentrennung
 
@@ -100,7 +114,8 @@ Falls einzelne Mandanten vertraglich physische Trennung verlangen (z. B. Behörd
 
 ### 3.3 Mandanten-Identifikation
 
-- **Agenten-Oberfläche:** Login einmal pro Nutzer, Mandantenwechsel in der Oberfläche; die aktive Mandanten-ID wird in jeder Anfrage mitgeführt und gegen die Mitgliedschaft geprüft.
+- **Agenten-Oberfläche:** Login einmal pro Nutzer. Listen laufen mandantenübergreifend über die Mandanten, in denen der Nutzer Mitglied ist (RLS-Policy prüft „`tenant_id` ∈ Mitgliedschaften“); beim Öffnen eines Tickets wird dessen Mandant zum aktiven Kontext für alle Schreibvorgänge.
+- **App-Anbindung:** Mandant ergibt sich aus dem API-Schlüssel, mit dem die Anwendung sich meldet.
 - **Kundenportal (Phase 2):** Subdomain pro Mandant (`kunde-a.tickets.example.de`) oder eigene Domain per CNAME.
 - **E-Mail-Eingang:** Mandant und Postfach ergeben sich aus der Empfängeradresse bzw. dem Postfach, aus dem abgerufen wurde.
 
@@ -115,6 +130,7 @@ flowchart LR
         MS[M365 / Google / IMAP-Postfächer]
         IP[Inbound-Mail-Dienst<br/>Webhook]
         SP[SMTP / Versanddienst]
+        APP[Anwendung der Mandanten<br/>Button 'Problem melden']
     end
 
     subgraph Plattform
@@ -131,6 +147,8 @@ flowchart LR
     K -- E-Mail --> IP
     MS -- IMAP / Graph / Gmail API --> WRK
     IP -- Webhook --> API
+    APP -- REST + API-Schlüssel --> API
+    API -. Webhook Statusänderung .-> APP
     WEB <--> API
     API <--> DB
     API <--> RQ
@@ -145,8 +163,8 @@ flowchart LR
 
 ### 4.2 Bausteine
 
-- **Web-Frontend:** Single-Page-App für Agenten und Mandanten-Admins; Live-Updates über WebSocket (neue Tickets, „wird gerade von X bearbeitet“).
-- **API-Server:** Zustandslos, horizontal skalierbar. Authentifizierung, Rechteprüfung, Mandantenkontext, Geschäftslogik. Öffentliche REST-API mit API-Keys pro Mandant (für Integrationen).
+- **Web-Frontend:** Single-Page-App für das Support-Team (Agenten und Admin); Live-Updates über WebSocket (neue Tickets, „wird gerade von X bearbeitet“).
+- **API-Server:** Zustandslos, horizontal skalierbar. Authentifizierung, Rechteprüfung, Mandantenkontext, Geschäftslogik. REST-API mit API-Schlüsseln pro Mandant, vor allem für die Ticket-Anlage aus der Anwendung.
 - **Worker:** Verarbeiten alles Asynchrone über eine Job-Queue: Mail-Abruf, Mail-Parsing, Versand mit Wiederholungen, SLA-Prüfung, Automationen, Benachrichtigungen, Webhooks, Löschfristen.
 - **PostgreSQL:** Primärdatenhaltung inkl. Volltextsuche im MVP.
 - **Redis:** Job-Queue, Cache, Pub/Sub für Live-Updates, Rate-Limits.
@@ -205,8 +223,8 @@ Alle mandantenbezogenen Tabellen haben `id` (UUID), `tenant_id`, `created_at`, `
 | `mailboxes` | `address`, `display_name`, `inbound_type` (imap/graph/gmail/forward), `credentials_ref` (verschlüsselt, im Secret-Store), `outbound_type` (platform/smtp/graph/gmail), `default_team_id`, `auto_reply_template_id`, `sending_domain_id`, `status`, `last_sync_at` |
 | `sending_domains` | `domain`, `dkim_selector`, `dkim_public_key`, `verified_at`, `spf_ok`, `dmarc_ok` |
 | `organizations` | `name`, `domains[]` (für automatische Zuordnung über Absender-Domain), `sla_policy_id`, `notes` |
-| `contacts` | `email` (eindeutig pro Mandant), `name`, `phone`, `organization_id`, `language`, `blocked` |
-| `tickets` | `number` (fortlaufend pro Mandant, z. B. `A-10234`), `subject`, `status`, `priority` (niedrig/normal/hoch/dringend), `type`, `channel`, `mailbox_id`, `requester_contact_id`, `team_id`, `assignee_user_id`, `sla_policy_id`, `first_response_at`, `resolved_at`, `closed_at`, `due_at`, `custom_fields` (JSONB), `merged_into_ticket_id`, `search_vector` |
+| `contacts` | `email` (eindeutig pro Mandant), `name`, `phone`, `organization_id`, `language`, `blocked`, `external_user_id` (Nutzer-ID in der Anwendung, eindeutig pro Mandant) |
+| `tickets` | `number` (fortlaufend pro Mandant, z. B. `A-10234`), `subject`, `status`, `priority` (niedrig/normal/hoch/dringend), `type`, `channel` (email/app/manuell), `app_context` (JSONB: Seite, Version, Browser, Fehlermeldung, Korrelations-ID), `external_ref` + `idempotency_key` (aus der Anwendung), `mailbox_id`, `requester_contact_id`, `team_id`, `assignee_user_id`, `sla_policy_id`, `first_response_at`, `resolved_at`, `closed_at`, `due_at`, `custom_fields` (JSONB), `merged_into_ticket_id`, `search_vector` |
 | `ticket_participants` | `ticket_id`, `contact_id`, `role` (to/cc) – für Antworten an alle |
 | `ticket_followers` | `ticket_id`, `user_id` – interne Beobachter |
 | `messages` | `ticket_id`, `kind` (email_in/email_out/note/portal/system), `author_user_id` / `author_contact_id`, `from`, `to[]`, `cc[]`, `subject`, `body_html` (bereinigt), `body_text`, `message_id_header`, `in_reply_to`, `references[]`, `raw_object_key`, `delivery_status`, `is_internal` |
@@ -222,7 +240,8 @@ Alle mandantenbezogenen Tabellen haben `id` (UUID), `tenant_id`, `created_at`, `
 | `automation_rules` | `trigger` (ticket_created/updated/zeitbasiert), `conditions` (JSON), `actions` (JSON), `order`, `active` |
 | `notifications` | `user_id`, `type`, `ticket_id`, `read_at` |
 | `notification_preferences` | `user_id`, `event`, `channel` (in_app/email) |
-| `api_keys`, `webhooks` | Integrationen pro Mandant |
+| `api_keys` | `name`, `key_hash` (nur Hash gespeichert), `scopes`, `last_used_at`, `revoked_at` – pro Mandant, z. B. ein Schlüssel für die Anwendung |
+| `webhooks` | `url`, `secret`, `events[]` – z. B. Statusänderungen zurück an die Anwendung |
 | `audit_log` | `actor`, `action`, `entity`, `entity_id`, `diff`, `ip`, `at` – administrative Änderungen und Zugriffe auf sensible Daten |
 
 ### 5.3 Ticketnummern
@@ -288,7 +307,144 @@ Zusätzlich:
 - **Eigene Adressen** als Absender werden ignoriert (sonst Endlosschleife zwischen zwei Postfächern).
 - **Spam:** SPF/DKIM/DMARC-Ergebnis des Eingangs auswerten, optional Rspamd. Gesperrte Kontakte/Domains pro Mandant.
 - **HTML-Bereinigung:** HTML-Mails werden serverseitig gefiltert (Scripts, Event-Handler, Formulare entfernt), externe Bilder nur nach Klick geladen (Tracking-Schutz), Darstellung in einem abgeschotteten iframe.
-- **Anhänge:** Virenscan, Größenlimit pro Mandant, gefährliche Dateitypen gesperrt. Inline-Bilder (`cid:`) werden auf interne URLs umgeschrieben.
+- **Anhänge:** siehe [Abschnitt 6b](#6b-anhänge). Inline-Bilder (`cid:`) werden auf interne URLs umgeschrieben.
+
+## 6a. Ticket-Anlage aus der Anwendung
+
+Das ist der Hauptgrund für die Eigenentwicklung: Nutzer eines Mandanten arbeiten in der Anwendung des Auftraggebers. Klappt dort etwas nicht, melden sie es direkt in der Anwendung, ohne eine E-Mail schreiben zu müssen. Das Ticket landet sofort mit allen technischen Angaben beim Team.
+
+### 6a.1 Ablauf
+
+```mermaid
+sequenceDiagram
+    actor N as Nutzer des Mandanten
+    participant A as Anwendung (Backend)
+    participant T as Ticketsystem-API
+    actor S as Support-Team
+
+    N->>A: Klick auf „Problem melden“, Beschreibung eingeben
+    A->>A: Kontext sammeln (Seite, Version, letzte Fehlermeldung, Screenshot)
+    A->>T: POST /api/v1/tickets (API-Schlüssel des Mandanten)
+    T-->>A: 201 Ticket A-1042
+    A-->>N: „Danke, Ihre Meldung hat die Nummer A-1042“
+    T->>N: Eingangsbestätigung per E-Mail
+    T->>S: Neues Ticket in der Arbeitsliste
+    S->>T: Antwort schreiben
+    T->>N: Antwort per E-Mail (Nutzer kann normal antworten)
+    T-->>A: Webhook „Status geändert“ (optional)
+```
+
+### 6a.2 Schnittstelle
+
+- **Aufruf nur vom Server der Anwendung**, nicht direkt aus dem Browser. So bleibt der API-Schlüssel geheim, und die Anwendung bestätigt, welcher Nutzer meldet.
+- **Authentifizierung:** ein API-Schlüssel pro Mandant (bzw. pro Mandant und Umgebung, z. B. Test und Produktion). Der Schlüssel legt den Mandanten fest; die Anwendung kann keinen anderen Mandanten angeben.
+- **Endpunkte (MVP):**
+  - `POST /api/v1/tickets`: Ticket anlegen
+  - `GET /api/v1/tickets?external_user_id=…`: Tickets eines Nutzers mit Status abrufen (für eine Liste „Meine Meldungen“ in der Anwendung)
+  - `GET /api/v1/tickets/{nummer}`: Status und öffentliche Antworten eines Tickets
+  - `POST /api/v1/tickets/{nummer}/messages`: Ergänzung des Nutzers (Phase 2)
+- **Beispiel-Anfrage:**
+
+```json
+POST /api/v1/tickets
+Authorization: Bearer tsk_live_…
+Idempotency-Key: 6f1c2a90-…
+
+{
+  "subject": "Rechnung lässt sich nicht speichern",
+  "description": "Beim Klick auf Speichern passiert nichts.",
+  "category": "fehler",
+  "priority": "normal",
+  "reporter": {
+    "external_user_id": "u_4711",
+    "email": "max.muster@kunde-a.de",
+    "name": "Max Muster"
+  },
+  "context": {
+    "url": "/rechnungen/neu",
+    "app_version": "2.3.1",
+    "browser": "Firefox 132 / Windows 11",
+    "error_message": "500 Internal Server Error",
+    "correlation_id": "req_9f8e7d",
+    "occurred_at": "2026-11-14T11:20:03Z"
+  },
+  "attachment_ids": ["att_01J…", "att_01K…"]
+}
+```
+
+- **Anhänge** (Screenshots, PDF, Word, Excel, APK usw., siehe [Abschnitt 6b](#6b-anhänge)) werden vorher einzeln hochgeladen: `POST /api/v1/attachments` als `multipart/form-data` liefert eine `attachment_id`, die dann beim Ticket mitgegeben wird. So funktionieren auch große Dateien wie APKs zuverlässig, ohne die Ticket-Anfrage aufzublähen. Nicht verwendete Uploads werden nach 24 Stunden gelöscht.
+
+- **Idempotenz:** Mit dem Header `Idempotency-Key` führt ein doppelter Klick oder ein Netzwerk-Wiederholversuch nicht zu zwei Tickets.
+- **Nutzerzuordnung:** Über `external_user_id` bzw. E-Mail wird der Kontakt gefunden oder angelegt. Dadurch landen Meldungen aus der Anwendung und E-Mails derselben Person beim selben Kontakt.
+- **Antworten an den Nutzer** gehen per E-Mail über das Postfach des Mandanten. Antwortet der Nutzer darauf, läuft das über das normale Threading (Abschnitt 6.3). Die Anwendung muss dafür nichts tun.
+- **Webhooks zurück an die Anwendung** (optional): `ticket.status_changed`, `ticket.replied`, signiert mit HMAC. Damit kann die Anwendung z. B. einen Hinweis „Ihre Meldung wurde beantwortet“ anzeigen.
+- **Rate-Limit** pro API-Schlüssel, Größenlimit für Anhänge.
+
+### 6a.3 Technische Angaben im Ticket
+
+Im Ticketdetail sieht der Agent die mitgeschickten Angaben in einem eigenen Kasten „Technische Details“: Seite, Version, Browser, Fehlermeldung, Zeitpunkt. Die Korrelations-ID lässt sich direkt mit den Logs der Anwendung abgleichen. Diese Angaben sind nur intern sichtbar und gehen nicht in E-Mails an den Kunden.
+
+**Datenschutz:** Die Anwendung schickt nur, was für die Fehlersuche nötig ist, also keine Passwörter, Tokens oder vollständigen Formularinhalte. Das ist in der Anwendung beim Sammeln des Kontexts sicherzustellen (Allowlist der Felder).
+
+### 6a.4 Automatische Fehlermeldungen (optional, Phase 2)
+
+Zusätzlich zur Meldung durch den Nutzer kann die Anwendung schwere Fehler auch selbst melden (ohne Klick des Nutzers). Damit daraus keine Ticketflut wird, gilt:
+
+- Jeder Fehler bekommt einen **Fingerabdruck** (z. B. Fehlertyp + Code-Stelle). Gleiche Fehler werden in einem offenen Ticket gesammelt, mit einem Zähler „trat 37-mal bei 5 Nutzern auf“, statt jedes Mal ein neues Ticket zu erzeugen.
+- Solche Tickets gehen in eine eigene Queue „Technik“ und lösen keine E-Mail an Endnutzer aus.
+
+Ob das gewünscht ist, ist offen (F17).
+
+### 6a.5 Was in der Anwendung zu bauen ist
+
+- Button bzw. Menüpunkt „Problem melden“ mit kurzem Formular (Betreff, Beschreibung, optional Screenshot)
+- Server-Endpunkt in der Anwendung, der Kontext ergänzt und das Ticketsystem aufruft
+- API-Schlüssel des Mandanten in der Konfiguration der Anwendung (als Geheimnis, nicht im Code)
+- Optional: Liste „Meine Meldungen“ und Empfang der Webhooks
+
+Ein kleines **Client-Paket** (TypeScript) mit fertigen Typen und Aufrufen erleichtert die Anbindung; es entsteht zusammen mit der API.
+
+## 6b. Anhänge
+
+Anhänge sind auf allen Wegen möglich: in eingehenden E-Mails, bei der Meldung aus der Anwendung, in Antworten der Agenten an Kunden und in internen Notizen.
+
+### 6b.1 Erlaubte Dateien
+
+Grundsatz: **fast alles annehmen, aber nichts davon im System ausführen oder ungeprüft anzeigen.** Ein Support-Team braucht auch Dateien wie APKs, Logs oder Archive, um Fehler nachzuvollziehen.
+
+| Gruppe | Beispiele | Behandlung |
+|---|---|---|
+| Bilder | PNG, JPG, GIF, WebP, HEIC | Vorschau direkt im Ticket (Miniatur + Großansicht); HEIC wird für die Vorschau umgewandelt |
+| Dokumente | PDF | Vorschau im Browser (eingebetteter PDF-Betrachter) |
+| Office | DOCX, XLSX, PPTX, ODT, ODS, CSV, TXT | Download; Vorschau optional später (Umwandlung nach PDF) |
+| Logs / Daten | LOG, JSON, XML | Download, Textvorschau |
+| Archive | ZIP, 7Z, RAR, TAR.GZ | Download; Inhalt wird beim Virenscan mitgeprüft |
+| Programme / Apps | APK, AAB, IPA, EXE, MSI | **Nur Download**, mit Warnhinweis; nie Vorschau |
+| Video | MP4, MOV, WebM (z. B. Bildschirmaufnahmen) | Abspielen im Browser |
+
+Pro Mandant einstellbar: Größenlimit und eine Sperrliste für Dateitypen, falls ein Mandant bestimmte Typen nicht annehmen möchte.
+
+### 6b.2 Größen
+
+- Upload über das System (Anwendung, Agenten-Oberfläche): **bis 100 MB pro Datei** (Standard, einstellbar), damit auch APKs und Bildschirmvideos passen.
+- E-Mail-Eingang: Was das Mailsystem zustellt, wird angenommen (meist 25–35 MB pro Mail).
+- **E-Mail-Ausgang:** Mailserver der Empfänger lehnen oft Mails über ca. 20 MB ab. Große Anhänge in Antworten werden deshalb nicht in die Mail gepackt, sondern als **Download-Link** mit Ablaufdatum eingefügt (z. B. 30 Tage gültig, nicht erratbar).
+
+### 6b.3 Sicherheit
+
+- **Virenscan** jedes Anhangs (ClamAV) vor der Freigabe. Bis der Scan durch ist, steht der Anhang auf „wird geprüft“; befallene Dateien werden gesperrt, bleiben aber für Admins nachvollziehbar.
+- **Dateityp anhand des Inhalts prüfen**, nicht nur anhand der Endung (eine `rechnung.pdf.exe` wird als Programm erkannt).
+- Download immer mit `Content-Disposition: attachment` und von einer getrennten Download-Domain bzw. über signierte, kurzlebige URLs. Dadurch kann eine hochgeladene HTML- oder SVG-Datei keinen Schadcode im Ticketsystem ausführen.
+- SVG und HTML werden nie direkt angezeigt, nur heruntergeladen.
+- Ablage verschlüsselt im Objektspeicher unter dem Mandanten (`tenants/<tenant_id>/attachments/…`); Zugriff nur nach Rechteprüfung.
+- Prüfsumme (SHA-256) wird gespeichert; gleiche Dateien im selben Mandanten werden nur einmal abgelegt.
+- Löschfristen gelten auch für Anhänge (Abschnitt 13.1).
+
+### 6b.4 Bedienung
+
+- Hochladen per Drag-and-drop und **Einfügen von Screenshots aus der Zwischenablage** (Strg+V) im Antwort-Editor.
+- Anhangsliste pro Ticket: alle Dateien aus allen Nachrichten an einer Stelle, mit Absender und Datum.
+- Anhänge aus einer Kundenmail können beim Weiterleiten oder Antworten wiederverwendet werden (nur innerhalb desselben Mandanten).
 
 ## 7. E-Mail-Ausgang
 
@@ -299,6 +455,8 @@ Zusätzlich:
 | **Plattform-Versand** über einen Versanddienst oder eigenen MTA, mit **verifizierter Absenderdomain des Mandanten** (DKIM-Schlüssel pro Mandant, SPF-Include) | Standard. Beste Zustellbarkeit und Kontrolle über Zustellstatus. |
 | **SMTP des Mandanten** | Mandant hinterlegt eigenen SMTP-Server. |
 | **Graph / Gmail API** | Versand direkt aus dem angebundenen Postfach; gesendete Mail liegt auch im „Gesendet“-Ordner des Kunden. |
+
+**Einstieg ohne DNS-Arbeit beim Mandanten:** Versand über eine eigene Domain des Auftraggebers, z. B. `"Kunde A Support" <kunde-a@support.deine-firma.de>`. Das funktioniert sofort und zuverlässig; auf die Mandanten-Domain kann je Mandant später umgestellt werden (F6).
 
 Ohne verifizierte Domain versendet die Plattform nicht im Namen fremder Domains (sonst landet alles im Spam und es entsteht ein Missbrauchsrisiko). Die Einrichtung zeigt dem Mandanten die nötigen DNS-Einträge an und prüft sie.
 
@@ -321,21 +479,24 @@ Ohne verifizierte Domain versendet die Plattform nicht im Namen fremder Domains 
 
 ### 8.1 Rollen
 
-| Rolle | Ebene | Darf |
-|---|---|---|
-| **Plattform-Admin** | Plattform | Mandanten anlegen/sperren, Pläne, Systemzustand. Zugriff auf Ticketinhalte nur über protokollierten „Support-Zugang“, den der Mandant freigibt. |
-| **Mandanten-Admin** | Mandant | Postfächer, Teams, Nutzer, SLAs, Regeln, Vorlagen, Branding, Felder, API-Keys; sieht alle Tickets. |
-| **Supervisor / Teamleiter** | Mandant / Team | Alle Tickets seiner Teams sehen, umverteilen, Berichte, Makros pflegen. |
-| **Agent** | Mandant / Team | Tickets seiner Queues sehen, bearbeiten, beantworten, zuweisen (an sich oder Teamkollegen). |
-| **Light-Agent** | Mandant | Lesen und interne Notizen schreiben, nicht an Kunden antworten (z. B. Fachabteilung). |
-| **Kontakt (Kunde)** | Mandant | Phase 2: im Portal eigene Tickets bzw. Tickets der eigenen Organisation sehen. |
+Im Dienstleister-Modell gibt es nur Rollen für das eigene Team. Mandanten konfigurieren nichts selbst.
+
+| Rolle | Darf |
+|---|---|
+| **Admin** (Auftraggeber) | Mandanten anlegen, Postfächer und API-Schlüssel einrichten, Nutzer, Teams, SLAs, Regeln, Vorlagen pflegen; sieht alles. Pro Mandant oder global. |
+| **Supervisor** | Alle Tickets der eigenen Mandanten/Teams sehen, umverteilen, Berichte, Vorlagen und Makros pflegen. |
+| **Agent** | Tickets bearbeiten, beantworten, zuweisen, in den Mandanten, denen er angehört. |
+| **Light-Agent** (optional) | Lesen und interne Notizen schreiben, nicht an Kunden antworten (z. B. Entwickler, der bei einem Fehler hilft). |
+| **Kontakt (Endnutzer)** | Kein Login im MVP. Meldet per E-Mail oder aus der Anwendung; später ggf. Statusansicht in der Anwendung oder im Portal. |
+
+Ein „Mandanten-Admin“ für Kunden entfällt. Er lässt sich später ergänzen, falls Mandanten doch eigene Einstellungen pflegen sollen.
 
 ### 8.2 Umsetzung
 
 - Rechte sind **Berechtigungen** (z. B. `ticket.reply`, `ticket.assign`, `mailbox.manage`), Rollen sind Bündel davon. So lassen sich später eigene Rollen pro Mandant ergänzen, ohne Code zu ändern.
 - Sichtbarkeit von Tickets: Rolle × Teamzugehörigkeit. Einstellung pro Team: „Agenten sehen nur eigene Tickets“ oder „alle Tickets der Queue“.
 - Prüfung zentral in der API (Policy-Schicht), nie nur im Frontend.
-- **Authentifizierung:** E-Mail + Passwort mit Pflicht-MFA (TOTP) für Admins; SSO per OIDC/SAML (Microsoft Entra ID, Google) pro Mandant in Phase 2. Sitzungen sind widerrufbar, Login-Versuche begrenzt.
+- **Authentifizierung:** E-Mail + Passwort mit Pflicht-MFA (TOTP) für alle Agenten, da jeder Zugang Daten mehrerer Mandanten sieht. Optional Login über das eigene Microsoft- oder Google-Konto des Teams. Sitzungen sind widerrufbar, Login-Versuche begrenzt.
 
 ## 9. Queues und Zuweisung
 
@@ -471,36 +632,47 @@ Schutz vor Regelschleifen: Jede Regel wirkt pro Ereignis höchstens einmal; begr
 
 - Backups: tägliches Voll-Backup + Point-in-Time-Recovery der DB; Versionierung im Objektspeicher; regelmäßiger Wiederherstellungstest.
 - Monitoring: Fehler-Tracking, Metriken (Mail-Durchsatz, Queue-Länge, Fehlerrate, Abruf-Verzögerung pro Postfach), Alarme bei hängenden Postfächern.
-- Ziel-Verfügbarkeit und Supportzeiten des Betreibers sind festzulegen (F10).
-- Lastannahme für die Dimensionierung: siehe F3.
+- Ziel-Verfügbarkeit ist festzulegen (F10).
+- Dimensionierung: ca. 5 Mandanten und 2–10 Agenten. Dafür reicht **ein Server** (z. B. 4 vCPU, 8–16 GB RAM) mit Docker Compose, plus Objektspeicher und externem Backup. Selbst das Zehnfache an Last bräuchte noch keine andere Architektur.
 
 ## 14. Offene Fragen
 
-Diese Punkte kann nur der Auftraggeber beantworten. Die Annahmen in Klammern gelten, bis eine Antwort vorliegt.
+### Geklärt (14.11.2026)
+
+| # | Frage | Antwort |
+|---|---|---|
+| F1 | Wer arbeitet im System? | Nur das eigene Team, für mehrere Mandanten (Dienstleister-Modell). |
+| F3 | Mengengerüst | ca. 5 Mandanten, 2–10 Mitarbeiter. |
+| F14 | Wer entwickelt und betreibt? | Der Auftraggeber selbst. |
+| F15 | Eigenentwicklung oder Open Source? | Eigenentwicklung, wegen der Ticket-Anlage aus der eigenen Anwendung. |
+| F18 | Anhänge | Alle gängigen Dateien inkl. Screenshots, PDF, DOCX, XLSX, APK (Abschnitt 6b). |
+
+### Noch offen
+
+Die Annahmen in der rechten Spalte gelten, bis eine Antwort vorliegt. Die wichtigsten Fragen stehen oben.
 
 | # | Frage | Annahme bis zur Klärung |
 |---|---|---|
-| F1 | **Wer arbeitet im System?** Bearbeitet dein eigenes Team die Tickets für mehrere Kunden (Dienstleister-Modell), oder bekommen die Mandanten eigene Zugänge für ihre Mitarbeiter (SaaS-Modell) – oder beides? | Beides möglich; Agenten können mehreren Mandanten angehören. |
-| F2 | Gibt es Mandanten mit besonderen Anforderungen an die Trennung (eigene Datenbank, eigener Server, bestimmte Branche wie Gesundheit/Behörden)? | Nein; gemeinsame DB mit RLS. |
-| F3 | **Mengengerüst:** Wie viele Mandanten zum Start und in zwei Jahren? Wie viele Agenten insgesamt? Wie viele Mails/Tickets pro Tag? | 5–50 Mandanten, bis 100 Agenten, bis 2.000 Mails/Tag. |
-| F4 | Soll das System als Produkt an Dritte verkauft werden (mit Selbstregistrierung, Abrechnung, Plänen) oder nur selbst betrieben werden? | Selbst betrieben; Mandanten legt der Plattform-Admin an. |
-| F5 | Welche Mailsysteme nutzen die Mandanten überwiegend (Microsoft 365, Google, eigener Server/IMAP)? Ist eine Weiterleitung an eine Plattformadresse für sie akzeptabel? | Überwiegend M365; Weiterleitung zum Start akzeptabel. |
-| F6 | Sollen Mails im Namen der Mandanten-Domain verschickt werden (DNS-Einträge beim Mandanten nötig) oder reicht anfangs eine Plattform-Domain? | Mandanten-Domain mit DKIM. |
-| F7 | Brauchen Endkunden ein **Self-Service-Portal** (Tickets einsehen, neue anlegen) schon zum Start? | Nein, Phase 2. |
-| F8 | Fristen: Nach wie vielen Tagen soll „Gelöst“ automatisch „Geschlossen“ werden? Nach wie vielen Tagen ohne Antwort wird „Wartet auf Kunde“ gelöst? | 7 bzw. 14 Tage, pro Mandant einstellbar. |
-| F9 | Sind SLAs vertraglich mit Kunden vereinbart (dann brauchen wir revisionssichere Berichte), oder sind sie interne Ziele? | Interne Ziele, Berichte als Export. |
-| F10 | Welche Verfügbarkeit soll die Plattform haben, und wo soll gehostet werden (eigener Server, Hetzner, IONOS, AWS/Azure in Frankfurt …)? | 99,5 %, deutscher Hoster. |
-| F11 | Welche Integrationen sind wichtig (CRM, Warenwirtschaft, Teams/Slack, Telefonanlage, Zeiterfassung, Abrechnung)? | Zunächst nur REST-API + Webhooks. |
-| F12 | Sollen Arbeitszeiten auf Tickets erfasst und abgerechnet werden (z. B. Kontingente pro Kunde)? | Nicht im MVP. |
-| F13 | Sprachen: Nur Deutsch, oder auch Englisch/weitere für Oberfläche und Kundenvorlagen? | Oberfläche DE/EN, Vorlagen mehrsprachig. |
-| F14 | Wer entwickelt und betreibt das System – du selbst, ein Team, ein Dienstleister? Gibt es bevorzugte Programmiersprachen oder vorhandene Infrastruktur? | Kleines Team, offen für den Stack unten. |
-| F15 | Wurde eine bestehende Lösung geprüft (z. B. Zammad, FreeScout, osTicket als Open Source)? Gibt es einen Grund für eine Eigenentwicklung, z. B. bestimmte fehlende Funktionen? | Eigenentwicklung gewünscht. |
+| F16 | **Zur Anwendung:** Mit welcher Technik ist sie gebaut (Sprache, Framework, Datenbank, Hosting)? Ist sie selbst mandantenfähig, und entsprechen ihre Mandanten den Mandanten im Ticketsystem? Sind die Nutzer dort angemeldet und ist ihre E-Mail-Adresse bekannt? | Eigene Web-Anwendung mit Login; Mandanten 1:1; E-Mail des Nutzers bekannt. Wenn sie in TypeScript gebaut ist, sollte das Ticketsystem denselben Stack nutzen. |
+| F17 | Soll die Anwendung schwere Fehler auch **automatisch** melden (ohne Klick des Nutzers), oder nur Meldungen durch Nutzer? | Zuerst nur Nutzermeldungen; automatische Meldungen in Phase 2. |
+| F19 | Sollen Nutzer den **Stand ihrer Meldungen in der Anwendung** sehen (Liste „Meine Meldungen“), oder reicht die Kommunikation per E-Mail? | E-Mail reicht im MVP; API für die Liste ist vorbereitet. |
+| F5 | Welche Mailsysteme nutzen die Mandanten (Microsoft 365, Google, IMAP)? Ist eine Weiterleitung an eine Plattformadresse für sie in Ordnung? | Weiterleitung zum Start in Ordnung. |
+| F6 | Sollen Antworten mit der **Domain des Mandanten** verschickt werden (`support@kunde-a.de`, dafür sind DNS-Einträge beim Mandanten nötig), oder mit einer eigenen Domain (`kunde-a@support.deine-firma.de`)? | Eigene Domain zum Start (weniger Abstimmung), Mandanten-Domain später je Mandant. |
+| F10 | Wo soll gehostet werden (eigener Server, Hetzner, IONOS, …), und gibt es dort schon etwas, z. B. die Anwendung? | Ein Server bei einem deutschen Hoster, gern neben der Anwendung. |
+| F8 | Nach wie vielen Tagen soll „Gelöst“ automatisch „Geschlossen“ werden, und nach wie vielen Tagen ohne Antwort ein „Wartet auf Kunde“-Ticket gelöst? | 7 bzw. 14 Tage. |
+| F9 | Gibt es mit den Mandanten vertraglich vereinbarte Reaktionszeiten (SLAs)? | Nein, interne Ziele. |
+| F2 | Hat ein Mandant besondere Anforderungen an die Datentrennung (eigene Datenbank, bestimmte Branche)? | Nein. |
+| F11 | Weitere Integrationen (Teams/Slack-Benachrichtigung, Abrechnung, Zeiterfassung)? | Keine im MVP. |
+| F12 | Sollen Arbeitszeiten auf Tickets erfasst und den Mandanten berechnet werden? | Nicht im MVP. |
+| F13 | Sprachen der Oberfläche und der Kundenvorlagen? | Deutsch; Englisch vorbereitet. |
 
-F15 ist bewusst aufgenommen: Ein mandantenfähiges Ticketsystem ist ein großes Vorhaben. Wenn die Anforderungen weitgehend Standard sind, kann das Anpassen einer Open-Source-Lösung deutlich schneller sein. Eine Eigenentwicklung lohnt sich vor allem, wenn Mandantenfähigkeit im Dienstleister-Modell, eigene Abläufe oder ein eigenes Produkt im Mittelpunkt stehen.
+Entfallen: F4 (Verkauf als Produkt an Dritte), weil die Mandanten nicht selbst im System arbeiten. F7 (Kundenportal) ist durch die App-Anbindung weitgehend ersetzt.
 
 ## 15. Tech-Stack-Empfehlung
 
-Kriterien: verbreitet und gut dokumentiert, ein Sprach-Ökosystem für Frontend und Backend (kleines Team), gute Bibliotheken für E-Mail, problemloser Betrieb in der EU.
+Kriterien: verbreitet und gut dokumentiert, ein Sprach-Ökosystem für Frontend und Backend (ein Entwickler), gute Bibliotheken für E-Mail, wenig Betriebsaufwand, problemloser Betrieb in der EU.
+
+**Wichtig:** Ist die Anwendung, aus der Tickets gemeldet werden, schon mit einem bestimmten Stack gebaut (F16), sollte das Ticketsystem möglichst denselben nutzen. Dann teilen beide Werkzeuge, Hosting und Wissen, und das Client-Paket passt direkt. Die folgende Empfehlung gilt, falls die Anwendung ebenfalls TypeScript nutzt oder noch nichts festgelegt ist.
 
 | Bereich | Empfehlung | Begründung / Alternative |
 |---|---|---|
@@ -517,11 +689,11 @@ Kriterien: verbreitet und gut dokumentiert, ein Sprach-Ökosystem für Frontend 
 | HTML-Bereinigung | **DOMPurify** (serverseitig mit jsdom) | Bewährt gegen XSS. |
 | Frontend | **React + Vite**, TanStack Query/Router, UI-Bibliothek z. B. Mantine oder shadcn/ui | Schnelle, interaktive Agenten-Oberfläche. Next.js erst mit dem Kundenportal sinnvoll. |
 | Editor | **TipTap** | Rich-Text für Antworten, Erwähnungen, Vorlagen. |
-| Auth | Eigene Implementierung mit bewährten Bausteinen (Argon2, TOTP) oder **Keycloak** | Keycloak bringt SSO/SAML/MFA mit, ist aber zusätzlich zu betreiben. |
+| Auth | Eigene Implementierung mit bewährten Bausteinen (Argon2, TOTP), z. B. über **Better Auth** | Für 2–10 interne Nutzer reicht das; Keycloak wäre ein zusätzlicher Dienst ohne echten Mehrwert. |
 | Objektspeicher | S3-kompatibel (Hetzner Object Storage, IONOS, MinIO lokal) | |
-| Suche (später) | OpenSearch oder Meilisearch | Erst wenn Postgres-Volltext nicht mehr reicht. |
+| Suche | PostgreSQL-Volltext | Reicht für diese Größe dauerhaft. |
 | Virenscan | ClamAV als eigener Container | |
-| Betrieb | Docker, anfangs Docker Compose auf 1–2 Servern, später Kubernetes bei Bedarf; CI/CD mit GitHub Actions | |
+| Betrieb | Docker Compose auf einem Server, Deployment per GitHub Actions; Reverse-Proxy mit automatischem TLS (Caddy) | Kubernetes ist bei dieser Größe unnötig. |
 | Monitoring | Sentry (oder GlitchTip), Prometheus + Grafana, strukturierte Logs | |
 
 ### Vorgeschlagene Repository-Struktur
@@ -535,6 +707,7 @@ ticketsystem/
 ├── packages/
 │   ├── db/           # Schema, Migrationen, RLS-Policies
 │   ├── mail/         # Parsing, Threading, Versand
+│   ├── client/       # TypeScript-Client für die Anwendung
 │   └── shared/       # Typen, Validierung (zod)
 ├── docs/
 │   └── konzept.md
@@ -543,52 +716,66 @@ ticketsystem/
 
 ## 16. MVP und Roadmap
 
-### Phase 0 – Fundament (ca. 2–3 Wochen)
+Zugeschnitten auf einen Entwickler mit Claude, 5 Mandanten und ein kleines Team. Reihenfolge: zuerst das, was das Team täglich braucht, dann Komfort. Die Wochenangaben sind grobe Richtwerte bei Teilzeit-Entwicklung und hängen stark davon ab, wie viel Zeit pro Woche zur Verfügung steht.
 
-- Repository, CI, Docker-Compose-Entwicklungsumgebung
-- Datenbankschema für Mandanten, Nutzer, Mitgliedschaften; RLS-Policies + Tests für Mandantentrennung
-- Login mit MFA, Mandantenwechsel, Plattform-Admin legt Mandanten an
+### Phase 0 – Fundament (ca. 2 Wochen)
 
-### Phase 1 – MVP: E-Mail-Ticketing für mehrere Mandanten (ca. 8–10 Wochen)
+- Repository, CI (GitHub Actions), Docker-Compose-Umgebung (Postgres, Redis, MinIO, ClamAV, Mailpit zum Testen von Mails)
+- Schema für Mandanten, Nutzer, Mitgliedschaften; RLS-Policies + automatische Tests, dass Mandant A keine Daten von Mandant B sieht
+- Login mit MFA; Admin legt Mandanten und Nutzer an
 
-Ziel: Ein echter Pilotmandant kann seinen E-Mail-Support komplett darüber abwickeln.
+### Phase 1 – MVP (ca. 8–12 Wochen)
 
+Ziel: Das Team wickelt den Support aller 5 Mandanten komplett über das System ab.
+
+**Tickets und Oberfläche**
+- Gemeinsame Arbeitsliste über alle Mandanten mit Mandantenkennzeichnung, Filtern und Ansichten („Meine“, „Unzugewiesen“, „Wartet auf Kunde“)
+- Ticketdetail mit Verlauf, Antworten, internen Notizen, Status, Priorität, Zuweisung, Tags
+- Anhänge in allen Richtungen inkl. Screenshot per Strg+V, Vorschau für Bilder/PDF, Virenscan, Download-Links für große Dateien
+
+**E-Mail**
 - Postfächer per Weiterleitung und IMAP anbinden; Pipeline mit Duplikat-, Schleifen- und Bounce-Erkennung
-- Ticket-Erstellung, Threading (Header, Token, Betreffnummer), Kontakte und Organisationen automatisch
-- Ticketliste mit Ansichten und Filtern, Ticketdetail mit Verlauf, Antworten per Mail, interne Notizen, Anhänge
-- Versand über verifizierte Mandanten-Domain (DKIM) mit Zustellstatus
-- Teams/Queues, manuelle Zuweisung und Übernehmen, Status-Workflow, Prioritäten, Tags
-- Eingangsbestätigung und Antwortvorlagen, Signaturen
-- In-App- und E-Mail-Benachrichtigungen für Agenten
-- Einfache SLAs (Erstreaktion + Lösung) mit Geschäftszeiten und Warnanzeige
-- Ticket-Historie und Audit-Log, Volltextsuche
-- Admin-Oberfläche für Mandanten-Admins (Postfächer, Teams, Nutzer, Vorlagen)
+- Threading (Header, Token, Betreffnummer), Kontakte automatisch
+- Versand über das Postfach des Mandanten, Eingangsbestätigung, Vorlagen, Signaturen pro Mandant
 
-### Phase 2 – Ausbau (ca. 6–8 Wochen)
+**App-Anbindung**
+- API-Schlüssel pro Mandant, `POST /api/v1/tickets`, Anhang-Upload, `GET` für Status
+- Kasten „Technische Details“ im Ticket
+- TypeScript-Client-Paket und Anleitung zum Einbau in die Anwendung
+- Einbau des Buttons „Problem melden“ in die Anwendung (eigene Aufgabe im Repo der Anwendung)
 
-- Microsoft-365- (Graph) und Google-Workspace-Anbindung per OAuth
-- Automationsregeln und Makros, Round-Robin- und lastbasierte Zuweisung
-- SLA-Eskalationen, Folgereaktionszeit, Feiertagskalender
-- Kundenportal (Tickets einsehen/anlegen, Login per Magic-Link)
-- SSO (Entra ID / Google) pro Mandant
-- Benutzerdefinierte Felder, Zusammenführen/Aufteilen von Tickets
-- Kollisionsanzeige in Echtzeit
-- REST-API mit API-Keys, Webhooks
+**Rund herum**
+- Benachrichtigungen an Agenten (in der Oberfläche + E-Mail)
+- Einfache SLAs (Erstreaktion, Lösung) mit Geschäftszeiten und farbiger Warnanzeige
+- Ticket-Historie, Audit-Log, Volltextsuche
+- Admin-Seiten: Mandanten, Postfächer, API-Schlüssel, Nutzer, Vorlagen
+- Backup und Monitoring auf dem Produktivserver
 
-### Phase 3 – Professionalisierung
+### Phase 2 – Ausbau (nach Bedarf)
 
-- Berichte und Dashboards (Volumen, SLA-Einhaltung, Bearbeitungszeiten pro Mandant/Agent)
-- Zufriedenheitsumfragen (CSAT)
-- Löschfristen-Automatik, Mandanten-Export, DSGVO-Werkzeuge
+- Microsoft-365- und Google-Anbindung per OAuth
+- Webhooks zurück an die Anwendung; Liste „Meine Meldungen“ in der Anwendung (F19)
+- Automatische Fehlermeldungen aus der Anwendung mit Gruppierung (F17)
+- Automationsregeln und Makros, automatische Zuweisung
+- SLA-Eskalationen, Feiertagskalender
+- Versand mit Mandanten-Domain per DKIM (F6)
+- Zusammenführen und Aufteilen von Tickets, eigene Felder
+
+### Phase 3 – Später
+
+- Berichte pro Mandant (Ticketvolumen, Reaktionszeiten) als Nachweis gegenüber den Mandanten
+- Zeiterfassung und Abrechnung (F12)
+- Teams/Slack-Benachrichtigungen
+- KI-Unterstützung: Kategorisierung, Zusammenfassung, Antwortvorschläge
 - Wissensdatenbank
-- Integrationen (Teams/Slack, CRM), weitere Kanäle (Kontaktformular, Chat)
-- KI-Unterstützung: Kategorisierung, Zusammenfassung, Antwortvorschläge (optional, je Mandant abschaltbar)
 
-Die Zeitangaben gelten grob für 1–2 erfahrene Entwickler und sind vor einer verbindlichen Planung nach Klärung von F1, F3, F5 und F14 zu überprüfen.
+### Bewusst weggelassen
+
+Wegen der kleinen Größe und des Dienstleister-Modells entfallen gegenüber einem allgemeinen SaaS-Ticketsystem: Selbstregistrierung und Abrechnung von Mandanten, Mandanten-Admins, eigene Rollen pro Mandant, SSO pro Mandant, eigene Suchmaschine, Kubernetes.
 
 ### Nächste Schritte
 
-1. Offene Fragen F1–F15 beantworten, mindestens F1, F3, F5, F14 und F15.
-2. Konzept anhand der Antworten anpassen und Stack festlegen.
-3. UI-Entwürfe der Kernscreens (Ticketliste, Ticketdetail, Postfach-Einrichtung, Mandanten-Admin).
+1. F16 (Technik der Anwendung) beantworten, denn daran hängt der Stack. Danach F17, F19, F6 und F10.
+2. Konzept final abstimmen und den Pull Request mergen.
+3. Optional: UI-Entwürfe der Kernscreens (Arbeitsliste, Ticketdetail, Postfach- und API-Schlüssel-Einrichtung).
 4. Phase 0 starten: Repository-Grundgerüst und Mandantentrennung mit Tests.

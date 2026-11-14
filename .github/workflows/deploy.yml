@@ -7,12 +7,12 @@ name: Deploy auf IONOS
 #   IONOS_SFTP_HOST, IONOS_SFTP_USER, IONOS_SFTP_PASSWORD, IONOS_TARGET_DIR, ANLIEGO_DEPLOY_TOKEN
 # Benötigte Variablen:
 #   ANLIEGO_URL (z. B. https://tickets.example.de)
-#   DEPLOY_ON_PUSH = true, wenn jeder Push auf main automatisch hochgeladen werden soll
+#   DEPLOY_ON_PUSH = true, wenn jeder Push auf claude/ticketsystem/main automatisch hochgeladen werden soll
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [claude/ticketsystem/main]
 
 concurrency:
   group: deploy-ionos

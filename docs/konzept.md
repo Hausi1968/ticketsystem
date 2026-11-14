@@ -251,7 +251,7 @@ Alle mandantenbezogenen Tabellen haben `id` (UUID), `tenant_id`, `created_at`, `
 
 ### 5.3 Ticketnummern
 
-Pro Mandant eine eigene, lückenlose Folge (Tabelle `tenant_counters` mit Zeilensperre beim Hochzählen). Optional mit Präfix je Mandant (`ACME-1042`). Die interne UUID bleibt der technische Schlüssel; die Nummer dient Menschen und dem Betreff-Token.
+Eine fortlaufende Nummer über alle Mandanten hinweg, damit jede Nummer genau einmal vorkommt (Tabelle `ticket_sequence` mit Zeilensperre beim Hochzählen; Festlegung 14.11.2026). Angezeigt wird sie mit dem Kürzel des Mandanten (`MUS-1042`). Über die Suche öffnet die Eingabe der Nummer (`MUS-1042`, `#1042` oder `1042`) direkt das Ticket mit seinem Verlauf. Die Nummer dient Menschen und dem Betreff-Token.
 
 ## 6. E-Mail-Eingang
 
@@ -317,6 +317,8 @@ Zusätzlich:
 ## 6a. Ticket-Anlage aus der Anwendung
 
 Das ist der Hauptgrund für die Eigenentwicklung: Nutzer eines Mandanten arbeiten in der Anwendung des Auftraggebers. Klappt dort etwas nicht, melden sie es direkt in der Anwendung, ohne eine E-Mail schreiben zu müssen. Das Ticket landet sofort mit allen technischen Angaben beim Team.
+
+> **Umgesetzt (Phase 1b, 14.11.2026):** Anlegen, Anhänge, Idempotency-Key, Abruf der eigenen Meldungen mit Verlauf. Die verbindliche Beschreibung der Endpunkte steht in [docs/api.md](api.md); Webhooks bei Statusänderungen folgen später.
 
 ### 6a.1 Ablauf
 
@@ -567,7 +569,9 @@ stateDiagram-v2
 | Gelöst | gestoppt | Lösung mitgeteilt, Kunde kann noch reagieren |
 | Geschlossen | gestoppt | Endgültig, nur noch lesbar; neue Mail erzeugt neues Ticket |
 
-Statusnamen sind pro Mandant umbenennbar; die **Statuskategorie** (neu/offen/wartend/gelöst/geschlossen) bleibt fest, damit SLAs und Berichte über alle Mandanten gleich funktionieren. Zusätzlich: **Zusammenführen** von Tickets (Duplikate), **Verknüpfen** (verwandte Tickets), **Aufteilen** (eine Nachricht in neues Ticket).
+**Eigene Status (Festlegung 14.11.2026):** Administratoren legen Status unter *Verwaltung → Status* selbst an. Jeder Status hat einen Namen, eine Farbe und ein **Verhalten**: *bleibt offen*, *wartet* oder *schließt das Ticket*. Bei schließenden Status lässt sich zusätzlich einstellen, ob eine Kundenantwort das Ticket wieder öffnet oder ein neues Ticket anlegt. Die Status in der Tabelle oben sind vorbelegt. Neu, Offen, Wartet auf Kunde und Gelöst setzt Anliego selbst; sie lassen sich umbenennen, aber nicht löschen und im Verhalten nicht ändern. Listen, SLAs und Berichte richten sich nach dem Verhalten, nicht nach dem Namen.
+
+**Kategorien:** Unter *Verwaltung → Kategorien* frei anlegbar, entweder für einen Mandanten (z. B. „Bestellung“, „Reklamation“) oder für alle Mandanten. Im Ticket über *Bearbeiten → Kategorie* gesetzt und in der Ticketliste filterbar. Zusätzlich: **Zusammenführen** von Tickets (Duplikate), **Verknüpfen** (verwandte Tickets), **Aufteilen** (eine Nachricht in neues Ticket).
 
 ## 11. SLAs
 

@@ -14,4 +14,11 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
     ->everyMinute()
     ->withoutOverlapping(5);
 
-// Phase 1: Postfächer abrufen (Intervall je Postfach), SLA-Prüfung, automatisches Schließen
+// Postfächer abrufen. Das Intervall steht je Postfach (z. B. 5 oder 10 Minuten).
+Schedule::command('anliego:poll-mailboxes')
+    ->everyMinute()
+    ->withoutOverlapping(15);
+
+Schedule::command('anliego:cleanup')->dailyAt('03:15');
+
+// Später: SLA-Prüfung, automatisches Schließen gelöster Tickets

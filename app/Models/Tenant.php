@@ -29,10 +29,6 @@ class Tenant extends Model
             $tenant->slug ??= Str::slug($tenant->name);
             $tenant->short_code = Str::upper($tenant->short_code);
         });
-
-        static::created(function (Tenant $tenant) {
-            TenantCounter::create(['tenant_id' => $tenant->getKey()]);
-        });
     }
 
     /** Nur Mandanten, auf die der aktuelle Benutzer Zugriff hat. */

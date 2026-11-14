@@ -99,6 +99,13 @@ class TenantContext
         }
     }
 
+    /** Legt den Mandanten für den Rest der Anfrage fest (API-Anfragen mit Mandanten-Schlüssel). */
+    public function setTenantForRequest(int $tenantId): void
+    {
+        $this->override = [$tenantId];
+        $this->bypass = false;
+    }
+
     public function flush(): void
     {
         $this->membershipCache = [];

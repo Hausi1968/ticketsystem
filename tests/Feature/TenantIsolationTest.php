@@ -8,21 +8,6 @@ use App\Tenancy\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 
-function memberOf(Tenant ...$tenants): User
-{
-    $user = User::factory()->create();
-    foreach ($tenants as $tenant) {
-        $user->memberships()->create(['tenant_id' => $tenant->id, 'role' => MembershipRole::Agent]);
-    }
-
-    return $user;
-}
-
-function teamFor(Tenant $tenant, string $name): Team
-{
-    return app(TenantContext::class)->runFor($tenant, fn () => Team::factory()->create(['name' => $name]));
-}
-
 beforeEach(function () {
     $this->a = Tenant::factory()->create(['name' => 'Mandant A']);
     $this->b = Tenant::factory()->create(['name' => 'Mandant B']);

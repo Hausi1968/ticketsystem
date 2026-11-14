@@ -54,7 +54,7 @@ Im Repository → *Settings* → *Secrets and variables* → *Actions*:
 | Secret | `IONOS_TARGET_DIR` | Pfad des Ordners, z. B. `/anliego` |
 | Secret | `ANLIEGO_DEPLOY_TOKEN` | derselbe Wert wie in der `.env` |
 | Variable | `ANLIEGO_URL` | `https://tickets.deine-domain.de` |
-| Variable | `DEPLOY_ON_PUSH` | `true`, wenn jede Änderung auf `main` automatisch live gehen soll (sonst weglassen) |
+| Variable | `DEPLOY_ON_PUSH` | `true`, wenn jede Änderung auf `claude/ticketsystem/main` automatisch live gehen soll (sonst weglassen) |
 
 Unter *Settings* → *Environments* wird die Umgebung `production` beim ersten Lauf automatisch angelegt. Dort lässt sich auf Wunsch eine Freigabe vor jedem Deploy einstellen.
 
@@ -82,7 +82,28 @@ Die Übersicht in Anliego zeigt unter **Cronjob**, wann er zuletzt gelaufen ist.
 
 1. `https://tickets.deine-domain.de` öffnen und mit dem Administrator-Zugang anmelden.
 2. Die Zwei-Faktor-Anmeldung mit einer Authenticator-App (z. B. Microsoft Authenticator, Google Authenticator, 2FAS) einrichten. Sie ist für alle Mitarbeiter Pflicht. Die Wiederherstellungscodes sicher aufbewahren.
-3. Unter *Verwaltung* Mandanten, Mitarbeiter und Teams anlegen.
+3. Unter *Verwaltung* Mandanten, Mitarbeiter und Teams anlegen. Unter *Status* und *Kategorien* die Status (mit „schließt das Ticket ja/nein“) und Ticketkategorien nach Bedarf anpassen.
+
+## 9. Postfächer anbinden
+
+Für jede Adresse, aus der Tickets werden sollen (z. B. `auftrag@firma.de`), unter *Verwaltung → Postfächer* ein Postfach anlegen:
+
+| Feld | IONOS-Postfach | Hinweis |
+|---|---|---|
+| IMAP-Server / Port / Verschlüsselung | `imap.ionos.de` / `993` / SSL/TLS | |
+| SMTP-Server / Port / Verschlüsselung | `smtp.ionos.de` / `465` / SSL/TLS | |
+| Benutzername | die E-Mail-Adresse | Passwörter werden verschlüsselt gespeichert |
+| Abruf alle … Minuten | z. B. `5` oder `10` | Der Cronjob läuft jede Minute, das Postfach wird aber nur in diesem Abstand abgerufen |
+| Verarbeitete E-Mails verschieben nach | z. B. `Anliego` | Ordner vorher im Webmail anlegen. Leer = nur als gelesen markieren |
+
+Danach in der Liste *Verbindung testen* und *Jetzt abrufen*. Fehler beim Abruf stehen in der Liste und auf der Übersicht.
+
+Wichtig:
+
+- Anliego holt nur **ungelesene** E-Mails. Wer das Postfach zusätzlich in Outlook öffnet, sollte dort nichts als gelesen markieren, bevor Anliego abgerufen hat (oder Anliego bekommt ein eigenes Postfach bzw. eine Weiterleitung).
+- Abwesenheitsnotizen, Unzustellbarkeitsmeldungen und E-Mails aus den eigenen Postfächern werden erkannt und erzeugen kein Ticket.
+- Antworten gehen über das SMTP des Postfachs, mit der Ticketnummer im Betreff (z. B. `[#MUS-1000]`). Antwortet der Kunde, landet seine E-Mail wieder im selben Ticket.
+- Anhänge bis 100 MB: Dafür liegt `public/.user.ini` bei. Falls IONOS die Werte nicht übernimmt, `upload_max_filesize` und `post_max_size` im IONOS-Kundenbereich unter *PHP-Einstellungen* erhöhen.
 
 ## Fehlersuche
 
@@ -92,4 +113,6 @@ Die Übersicht in Anliego zeigt unter **Cronjob**, wann er zuletzt gelaufen ist.
 | Seite zeigt Ordnerinhalt oder `.env` ist abrufbar | Subdomain zeigt nicht auf `public/`. Sofort korrigieren (Schritt 2). |
 | Deploy-Schritt „Migrationen“ meldet 404 | `ANLIEGO_DEPLOY_TOKEN` in `.env` und GitHub-Secret stimmen nicht überein, oder `.env` fehlt. |
 | Cronjob „prüfen“ | Befehl und Pfad im IONOS-Cronjob prüfen; die Ausgabe schickt IONOS auf Wunsch per E-Mail. |
+| Postfach zeigt „Fehler“ | *Verbindung testen*; häufig falsches Passwort oder Ordnername. Nach der Korrektur *Jetzt abrufen*. |
+| Antwort „Versand fehlgeschlagen“ | SMTP-Daten des Postfachs prüfen. Anliego versucht den Versand automatisch bis zu fünfmal erneut (bis etwa 1,5 Stunden). |
 | Zwei-Faktor-Gerät verloren | Wiederherstellungscode verwenden, oder ein anderer Administrator setzt es zurück (folgt in Phase 1). |

@@ -104,6 +104,30 @@ Wichtig:
 - Abwesenheitsnotizen, Unzustellbarkeitsmeldungen und E-Mails aus den eigenen Postfächern werden erkannt und erzeugen kein Ticket.
 - Antworten gehen über das SMTP des Postfachs, mit der Ticketnummer im Betreff (z. B. `[#MUS-1000]`). Antwortet der Kunde, landet seine E-Mail wieder im selben Ticket.
 - Anhänge bis 100 MB: Dafür liegt `public/.user.ini` bei. Falls IONOS die Werte nicht übernimmt, `upload_max_filesize` und `post_max_size` im IONOS-Kundenbereich unter *PHP-Einstellungen* erhöhen.
+- **Eingangsbestätigung:** Je Postfach einschaltbar, der Text ist anpassbar (Platzhalter `{name}`, `{nummer}`, `{betreff}`, `{mandant}`, `{absender}`). Sie geht über das SMTP des Postfachs, sobald ein neues Ticket entsteht, auch bei Meldungen aus Anwendungen. Keine Bestätigung bekommen `noreply@`-Absender (z. B. Webshop-Bestellungen), Newsletter, die eigenen Postfächer, und jeder Kunde höchstens eine in 15 Minuten.
+
+## 10. Benachrichtigungen für Mitarbeiter
+
+Mitarbeiter sehen Hinweise in Anliego an der Glocke oben rechts:
+
+- **Neues Ticket:** an die Mitglieder des Teams, sonst an alle Mitarbeiter des Mandanten
+- **Zuweisung:** an den neuen Bearbeiter (nicht, wenn er sich das Ticket selbst nimmt)
+- **Kundenantwort:** an den Bearbeiter, ohne Bearbeiter wie bei einem neuen Ticket
+
+Zusätzlich kommen sie per E-Mail. Jeder stellt im **Profil** (oben rechts → Profil) ein, welche. Diese E-Mails gehen nicht über die Postfächer der Mandanten, sondern über eine eigene Absenderadresse von Anliego. Dafür in der `.env` auf dem Server zum Beispiel eintragen:
+
+```
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps
+MAIL_HOST=smtp.ionos.de
+MAIL_PORT=465
+MAIL_USERNAME=anliego@deine-domain.de
+MAIL_PASSWORD=…
+MAIL_FROM_ADDRESS=anliego@deine-domain.de
+MAIL_FROM_NAME="Anliego"
+```
+
+Die E-Mails werden über die Warteschlange verschickt, also innerhalb einer Minute durch den Cronjob. Ohne diese Einstellungen landen sie nur in `storage/logs`, die Hinweise an der Glocke funktionieren trotzdem.
 
 ## Fehlersuche
 

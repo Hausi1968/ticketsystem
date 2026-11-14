@@ -2,6 +2,8 @@
 
 namespace App\Api;
 
+use App\Mail\Outbound\AcknowledgementSender;
+use App\Tickets\TicketNotifier;
 use App\Enums\MessageType;
 use App\Enums\TicketPriority;
 use App\Models\ApiKey;
@@ -15,6 +17,11 @@ use Illuminate\Validation\ValidationException;
 
 class ApiTicketService
 {
+    public function __construct(
+        private readonly TicketNotifier $notifier,
+        private readonly AcknowledgementSender $acknowledgement,
+    ) {}
+
     /** @param array<string, mixed> $data bereits validiert */
     public function create(ApiKey $key, array $data): Ticket
     {
@@ -52,6 +59,9 @@ class ApiTicketService
             }
 
             $ticket->logEvent('created', data: ['channel' => 'api', 'api_key' => $key->name]);
+
+            $this->notifier->ticketCreated($ticket);
+            $this->acknowledgement->queueFor($ticket);
 
             return $ticket;
         });

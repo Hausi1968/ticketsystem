@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\EditProfile;
 use App\Filament\InitialsAvatarProvider;
 use App\Filament\Pages\Dashboard;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
@@ -29,7 +30,9 @@ class AppPanelProvider extends PanelProvider
             ->path('')
             ->login()
             ->passwordReset()
-            ->profile(isSimple: false)
+            ->profile(EditProfile::class, isSimple: false)
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->multiFactorAuthentication(
                 [AppAuthentication::make()->brandName('Anliego')->recoverable()],
                 isRequired: fn () => (bool) config('anliego.require_mfa'),

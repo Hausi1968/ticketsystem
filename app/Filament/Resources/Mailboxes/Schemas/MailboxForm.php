@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Mailboxes\Schemas;
 
+use App\Mail\Outbound\AcknowledgementSender;
 use App\Models\Team;
 use App\Models\Tenant;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -36,6 +38,17 @@ class MailboxForm
                     ->minValue(1)->maxValue(1440)->default(5)->required(),
                 Toggle::make('active')->label('Aktiv')->default(true),
             ]),
+
+            Section::make('Eingangsbestätigung')
+                ->description('Automatische Antwort an den Kunden, sobald aus seiner E-Mail oder App-Meldung ein neues Ticket entsteht.')
+                ->schema([
+                    Toggle::make('send_acknowledgement')->label('Eingangsbestätigung senden')->default(true)->live()
+                        ->helperText('Nicht an noreply-Adressen, Newsletter, eigene Postfächer und höchstens einmal in 15 Minuten je Kunde.'),
+                    Textarea::make('acknowledgement_text')->label('Text')->rows(10)
+                        ->placeholder(AcknowledgementSender::DEFAULT_TEXT)
+                        ->helperText('Leer = Standardtext (siehe Platzhalter). Platzhalter: {name}, {nummer}, {betreff}, {mandant}, {absender}')
+                        ->visible(fn (Get $get) => (bool) $get('send_acknowledgement')),
+                ]),
 
             Section::make('Eingang (IMAP)')->columns(3)->schema([
                 TextInput::make('imap_host')->label('Server')->required()->placeholder('imap.ionos.de'),

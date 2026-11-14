@@ -76,6 +76,34 @@ class ReplySender
         return $message;
     }
 
+    /**
+     * Automatische E-Mail an den Anfragenden (z. B. Eingangsbestätigung). Ändert weder Status noch
+     * Zuweisung und zählt nicht als erste Antwort. Versand über die Warteschlange.
+     */
+    public function automatic(Ticket $ticket, string $body): TicketMessage
+    {
+        $mailbox = $this->mailboxFor($ticket);
+
+        $message = $ticket->messages()->create([
+            'tenant_id' => $ticket->tenant_id,
+            'type' => MessageType::Auto,
+            'from_email' => $mailbox->email,
+            'from_name' => $mailbox->displayName(),
+            'to' => [['email' => $ticket->contact->email, 'name' => $ticket->contact->name]],
+            'cc' => [],
+            'subject' => $this->subjectFor($ticket),
+            'body_text' => $body,
+            'message_id' => $this->newMessageId($ticket, $mailbox),
+            'in_reply_to' => $ticket->messages()->whereNotNull('message_id')->where('type', MessageType::Customer)->reorder()->latest('id')->value('message_id'),
+            'references' => $this->referencesFor($ticket),
+            'delivery_status' => 'pending',
+        ]);
+
+        DeliverTicketMessage::dispatch($message->tenant_id, $message->getKey());
+
+        return $message;
+    }
+
     public function note(Ticket $ticket, User $agent, string $body, array $files = []): TicketMessage
     {
         return DB::transaction(function () use ($ticket, $agent, $body, $files) {
@@ -142,7 +170,13 @@ class ReplySender
         }
         // Eigene Kennung: kommt diese E-Mail zurück in ein Postfach, wird sie nicht erneut verarbeitet
         $headers->addTextHeader('X-Anliego-Ticket', $message->ticket->reference());
-        $headers->addTextHeader('Auto-Submitted', 'no');
+        if ($message->type === MessageType::Auto) {
+            // Abwesenheitsnotizen des Empfängers sollen darauf nicht antworten
+            $headers->addTextHeader('Auto-Submitted', 'auto-replied');
+            $headers->addTextHeader('X-Auto-Response-Suppress', 'All');
+        } else {
+            $headers->addTextHeader('Auto-Submitted', 'no');
+        }
 
         foreach ($message->attachments as $attachment) {
             $email->attach(Storage::disk($attachment->disk)->get($attachment->path), $attachment->filename, $attachment->mime_type);

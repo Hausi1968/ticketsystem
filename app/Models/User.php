@@ -20,7 +20,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'is_admin', 'active'];
+    protected $fillable = ['name', 'email', 'password', 'is_admin', 'active', 'notification_preferences'];
 
     protected $attributes = ['is_admin' => false, 'active' => true];
 
@@ -39,9 +39,22 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'active' => 'boolean',
+            'notification_preferences' => 'array',
             'app_authentication_secret' => 'encrypted',
             'app_authentication_recovery_codes' => 'encrypted:array',
         ];
+    }
+
+    /** Ereignisse, zu denen Mitarbeiter benachrichtigt werden. In der Oberfläche immer, per E-Mail nach Wahl. */
+    public const NOTIFICATION_EVENTS = [
+        'new_ticket' => 'Neues Ticket in meinen Mandanten bzw. Teams',
+        'assigned' => 'Mir wurde ein Ticket zugewiesen',
+        'customer_reply' => 'Kunde hat auf mein Ticket geantwortet',
+    ];
+
+    public function wantsMailFor(string $event): bool
+    {
+        return (bool) ($this->notification_preferences[$event] ?? true);
     }
 
     public function canAccessPanel(Panel $panel): bool

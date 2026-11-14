@@ -16,7 +16,9 @@ Phase 1a (Tickets und E-Mail): Postfächer je Mandant mit IMAP-Abruf per Cronjob
 
 Phase 1b (Ticket-API): API-Schlüssel je Mandant, Tickets aus Anwendungen mit Anhängen, technischen Details und Schutz vor Doppelmeldungen, Abruf der eigenen Meldungen mit Verlauf (ohne interne Notizen).
 
-Als Nächstes: Benachrichtigungen, SLAs, Eingangsbestätigung.
+Phase 2a (Benachrichtigungen): Eingangsbestätigung an Kunden je Postfach (mit Schutz vor Schleifen und noreply-Absendern), Hinweise an Mitarbeiter bei neuem Ticket, Zuweisung und Kundenantwort in der Oberfläche und nach Wunsch per E-Mail.
+
+Als Nächstes: SLAs und Erinnerungen, Webhooks, „Problem melden“ in der Mitgliederverwaltung.
 
 ## Technik
 

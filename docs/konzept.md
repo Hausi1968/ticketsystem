@@ -9,8 +9,10 @@ Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsyste
 | Punkt | Entscheidung | Folge für das Konzept |
 |---|---|---|
 | Wer bearbeitet Tickets? | **Nur das eigene Team** bearbeitet die Tickets aller Mandanten (Dienstleister-Modell). | Mandanten bekommen keine Agenten-Zugänge. Jeder Agent arbeitet mandantenübergreifend; eine gemeinsame Arbeitsliste über alle Mandanten ist die Hauptansicht. |
-| Größe | **ca. 5 Mandanten, 2–10 Mitarbeiter** | Ein kleiner Server reicht; keine Clusterlösung, keine eigene Suchmaschine. Einfache Lösungen haben Vorrang. |
+| Größe | **ca. 5 Mandanten, 2–10 Mitarbeiter** | Webhosting reicht; keine Clusterlösung, keine eigene Suchmaschine. Einfache Lösungen haben Vorrang. |
 | Entwicklung und Betrieb | **Der Auftraggeber selbst** (mit Claude) | Möglichst wenig Bausteine, die betrieben werden müssen; ein Repository, ein Deployment. |
+| Hosting | **Vorhandene Webhosting-Pakete**, kein eigener Server | Hintergrundarbeit per Cronjob; Mailabruf pro Mandant z. B. alle 5 oder 10 Minuten ([Abschnitt 15](#15-tech-stack-empfehlung)). |
+| Art der Mandanten | **Nicht nur Vereine mit Mitgliederverwaltung.** Auch Firmen, die ein gemeinsames Postfach als Team abarbeiten wollen, z. B. Bestellungen an die Auftragsbearbeitung. | E-Mail bleibt der Hauptkanal; die App-Anbindung ist ein zusätzlicher Kanal für Mandanten mit Mitgliederverwaltung. Selbst zuweisen („Übernehmen“) ist Standard ([Abschnitt 9](#9-queues-und-zuweisung)). |
 | Anwendung | **Mitgliederverwaltung** (PHP + MySQL auf Webspace, dazu Handy-App mit Expo/React Native), je Verein eine Installation | Ticketsystem ebenfalls in **PHP (Laravel) mit MySQL/MariaDB** ([Abschnitt 15](#15-tech-stack-empfehlung)); jede Vereinsinstallation ist ein Mandant mit eigenem API-Schlüssel. |
 | Eigenentwicklung? | **Ja.** Hauptgrund: Nutzer der Mandanten sollen aus einer eigenen, mit Claude erstellten Anwendung heraus Tickets anlegen, wenn dort etwas nicht klappt. | Neuer, gleichwertiger Kanal **„App“** neben E-Mail, mit eigener API (siehe [Abschnitt 6a](#6a-ticket-anlage-aus-der-anwendung)). |
 
@@ -164,13 +166,13 @@ flowchart LR
 
 ### 4.2 Bausteine
 
-- **Web-Frontend:** Single-Page-App für das Support-Team (Agenten und Admin); Live-Updates über WebSocket (neue Tickets, „wird gerade von X bearbeitet“).
+- **Web-Frontend:** Oberfläche für das Team (Agenten und Admin); Aktualisierung per kurzem Polling (neue Tickets, „wird gerade von X bearbeitet“).
 - **API-Server:** Zustandslos, horizontal skalierbar. Authentifizierung, Rechteprüfung, Mandantenkontext, Geschäftslogik. REST-API mit API-Schlüsseln pro Mandant, vor allem für die Ticket-Anlage aus der Anwendung.
 - **Worker:** Verarbeiten alles Asynchrone über eine Job-Queue: Mail-Abruf, Mail-Parsing, Versand mit Wiederholungen, SLA-Prüfung, Automationen, Benachrichtigungen, Webhooks, Löschfristen.
 - **MySQL/MariaDB:** Primärdatenhaltung inkl. Volltextsuche.
 - **Job-Queue:** zunächst in der Datenbank, Redis optional für später.
 - **Objektspeicher (S3-kompatibel):** Roh-Mails (`.eml`) und Anhänge, verschlüsselt.
-- **Virenscanner (ClamAV):** Prüft Anhänge vor der Freigabe.
+- **Virenscanner (optional):** ClamAV oder externer Dienst, sobald verfügbar; auf Webhosting zunächst ersetzt durch Typprüfung und reinen Download (Abschnitt 6b.3).
 
 Die Anwendung ist zunächst ein **modularer Monolith** (ein Code-Repository, ein Deployment mit zwei Prozessarten: API und Worker). Module mit klaren Grenzen: `tenancy`, `identity`, `tickets`, `mail`, `sla`, `automation`, `notifications`, `search`, `audit`. Microservices sind für diese Größenordnung nicht nötig und würden den Start bremsen.
 
@@ -260,7 +262,7 @@ Pro Mandant eine eigene, lückenlose Folge (Tabelle `tenant_counters` mit Zeilen
 | **Google Workspace (Gmail API, OAuth)** | Entsprechend über Gmail API + Push | Kunden mit Google Workspace |
 | **IMAP (mit IDLE)** | Klassischer Abruf mit Benutzer/Passwort oder OAuth | Sonstige Provider (IONOS, Strato, eigener Server) |
 
-**Empfehlung für das MVP:** Weiterleitung + IMAP. Graph-API-Anbindung direkt danach, da Microsoft Basic-Auth für IMAP bei Exchange Online abgeschaltet hat und M365-Kunden sonst nur über Weiterleitung angebunden werden können (F5).
+**Empfehlung für das MVP:** IMAP-Abruf per Cronjob mit **Intervall pro Postfach** (z. B. 5, 10 oder 15 Minuten), optional Weiterleitung mit Webhook für sofortigen Eingang. Abgerufene Mails werden im Postfach in einen Ordner „Ticketsystem/verarbeitet“ verschoben (statt gelöscht), damit nichts verloren geht. Graph-API-Anbindung direkt danach, da Microsoft Basic-Auth für IMAP bei Exchange Online abgeschaltet hat und M365-Kunden sonst nur über Weiterleitung angebunden werden können (F5).
 
 ### 6.2 Verarbeitungs-Pipeline
 
@@ -444,7 +446,7 @@ Pro Mandant einstellbar: Größenlimit und eine Sperrliste für Dateitypen, fall
 
 ### 6b.3 Sicherheit
 
-- **Virenscan** jedes Anhangs (ClamAV) vor der Freigabe. Bis der Scan durch ist, steht der Anhang auf „wird geprüft“; befallene Dateien werden gesperrt, bleiben aber für Admins nachvollziehbar.
+- **Virenscan:** Auf Webhosting steht meist kein Virenscanner zur Verfügung. Bis ein Scan möglich ist (eigener Server oder externer Dienst), gelten die folgenden Schutzmaßnahmen umso strenger: Programme und Archive werden nur heruntergeladen und deutlich als „nicht geprüft“ gekennzeichnet. Ist später ein Scanner angebunden, steht ein Anhang bis zum Ergebnis auf „wird geprüft“, und befallene Dateien werden gesperrt.
 - **Dateityp anhand des Inhalts prüfen**, nicht nur anhand der Endung (eine `rechnung.pdf.exe` wird als Programm erkannt).
 - Download immer mit `Content-Disposition: attachment` und von einer getrennten Download-Domain bzw. über signierte, kurzlebige URLs. Dadurch kann eine hochgeladene HTML- oder SVG-Datei keinen Schadcode im Ticketsystem ausführen.
 - SVG und HTML werden nie direkt angezeigt, nur heruntergeladen.
@@ -465,7 +467,7 @@ Pro Mandant einstellbar: Größenlimit und eine Sperrliste für Dateitypen, fall
 | Weg | Beschreibung |
 |---|---|
 | **Plattform-Versand** über einen Versanddienst oder eigenen MTA, mit **verifizierter Absenderdomain des Mandanten** (DKIM-Schlüssel pro Mandant, SPF-Include) | Standard. Beste Zustellbarkeit und Kontrolle über Zustellstatus. |
-| **SMTP des Mandanten** | Mandant hinterlegt eigenen SMTP-Server. |
+| **SMTP des Postfachs** | Versand über dasselbe Konto, das per IMAP abgerufen wird. **Standard im MVP**, weil es auf Webhosting ohne Zusatzdienst funktioniert und die Mail mit der echten Adresse rausgeht. Die gesendete Mail wird zusätzlich per IMAP im Ordner „Gesendet“ abgelegt. |
 | **Graph / Gmail API** | Versand direkt aus dem angebundenen Postfach; gesendete Mail liegt auch im „Gesendet“-Ordner des Kunden. |
 
 **Einstieg ohne DNS-Arbeit beim Mandanten:** Versand über eine eigene Domain des Auftraggebers, z. B. `"Kunde A Support" <kunde-a@support.deine-firma.de>`. Das funktioniert sofort und zuverlässig; auf die Mandanten-Domain kann je Mandant später umgestellt werden (F6).
@@ -515,6 +517,8 @@ Ein „Mandanten-Admin“ für Kunden entfällt. Er lässt sich später ergänze
 ### 9.1 Queues
 
 Jedes Postfach hat eine Standard-Queue. Regeln können Tickets beim Eingang in andere Queues leiten (z. B. Betreff enthält „Rechnung“ → Buchhaltung; Absender-Organisation VIP → Priorität hoch).
+
+**Beispiel Team-Postfach „Auftragsbearbeitung“:** Ein Kunde schickt eine Bestellung an `auftrag@firma.de`. Das Ticketsystem ruft das Postfach alle 5 Minuten ab und legt ein Ticket vom Typ „Bestellung“ in der Queue „Auftragsbearbeitung“ an. Das Team sieht es in der Liste „Unzugewiesen“. Ein Mitarbeiter klickt **„Übernehmen“** und ist damit zuständig, oder der Teamleiter weist es jemandem zu. Alle sehen, wer was bearbeitet; keine Bestellung bleibt liegen oder wird doppelt bearbeitet. Rückfragen an den Kunden gehen von `auftrag@firma.de` raus, und seine Antwort landet wieder im selben Ticket.
 
 ### 9.2 Zuweisungsmodi pro Queue
 
@@ -645,7 +649,7 @@ Schutz vor Regelschleifen: Jede Regel wirkt pro Ereignis höchstens einmal; begr
 - Backups: tägliches Voll-Backup + Point-in-Time-Recovery der DB; Versionierung im Objektspeicher; regelmäßiger Wiederherstellungstest.
 - Monitoring: Fehler-Tracking, Metriken (Mail-Durchsatz, Queue-Länge, Fehlerrate, Abruf-Verzögerung pro Postfach), Alarme bei hängenden Postfächern.
 - Ziel-Verfügbarkeit ist festzulegen (F10).
-- Dimensionierung: ca. 5 Mandanten und 2–10 Agenten. Dafür reicht **ein Server** (z. B. 4 vCPU, 8–16 GB RAM) mit Docker Compose, plus Objektspeicher und externem Backup. Selbst das Zehnfache an Last bräuchte noch keine andere Architektur.
+- Dimensionierung: ca. 5 Mandanten und 2–10 Agenten, das ist für ein gutes Webhosting-Paket wenig Last. Engpass sind eher Cron-Intervall und PHP-Zeitlimit, nicht Rechenleistung.
 
 ## 14. Offene Fragen
 
@@ -658,6 +662,8 @@ Schutz vor Regelschleifen: Jede Regel wirkt pro Ereignis höchstens einmal; begr
 | F14 | Wer entwickelt und betreibt? | Der Auftraggeber selbst. |
 | F15 | Eigenentwicklung oder Open Source? | Eigenentwicklung, wegen der Ticket-Anlage aus der eigenen Anwendung. |
 | F16 | Technik der Anwendung | Mitgliederverwaltung: PHP + MySQL auf Webspace, Handy-App mit Expo/React Native. |
+| F20 | Hosting | Vorhandene Webhosting-Pakete, kein eigener Server; Mailabruf per Cronjob z. B. alle 5–10 Minuten. |
+| F21 | Art der Mandanten | Nicht nur Vereine mit Mitgliederverwaltung, auch Firmen mit Team-Postfach (z. B. Bestellungen an die Auftragsbearbeitung). |
 | F18 | Anhänge | Alle gängigen Dateien inkl. Screenshots, PDF, DOCX, XLSX, APK (Abschnitt 6b). |
 
 ### Noch offen
@@ -666,12 +672,12 @@ Die Annahmen in der rechten Spalte gelten, bis eine Antwort vorliegt. Die wichti
 
 | # | Frage | Annahme bis zur Klärung |
 |---|---|---|
-| F20 | **Hosting:** Ist ein eigener kleiner Server (z. B. Hetzner, ca. 5–15 €/Monat) für das Ticketsystem in Ordnung, oder muss es auf dem vorhandenen Webspace laufen? Bei welchem Hoster liegt die Mitgliederverwaltung? | Eigener kleiner Server. |
-| F21 | **Mandanten:** Ist jeder Mandant ein Verein mit eigener Installation der Mitgliederverwaltung? Gibt es Mandanten, die keine Mitgliederverwaltung nutzen und nur per E-Mail Tickets schicken? | Ja, je Verein eine Installation; E-Mail-Kanal trotzdem für alle. |
+| F22 | **Wer arbeitet die Tickets ab?** Im Beispiel Auftragsbearbeitung: Sind die Mitarbeiter, die sich die Bestellungen zuordnen, **Angestellte dieser Firma** (dann bräuchte der Mandant doch eigene Zugänge, nur für seine eigenen Tickets), oder **dein Team**? | Beides vorgesehen: Ein Mitarbeiter kann auf einen einzigen Mandanten beschränkt werden und sieht dann nur dessen Tickets. |
+| F23 | **Welcher Hoster / welches Paket** soll es sein (z. B. all-inkl, IONOS, Strato, netcup)? Wichtig: PHP-Version, kürzestes Cron-Intervall, SSH ja/nein, Zeitlimit für Skripte. | PHP 8.2+, Cron alle 1–5 Minuten, ohne SSH. |
 | F17 | Soll die Anwendung schwere Fehler auch **automatisch** melden (ohne Klick des Nutzers), oder nur Meldungen durch Nutzer? | Zuerst nur Nutzermeldungen; automatische Meldungen in Phase 2. |
 | F19 | Sollen Nutzer den **Stand ihrer Meldungen in der Anwendung** sehen (Liste „Meine Meldungen“), oder reicht die Kommunikation per E-Mail? | E-Mail reicht im MVP; API für die Liste ist vorbereitet. |
 | F5 | Welche Mailsysteme nutzen die Mandanten (Microsoft 365, Google, IMAP)? Ist eine Weiterleitung an eine Plattformadresse für sie in Ordnung? | Weiterleitung zum Start in Ordnung. |
-| F6 | Sollen Antworten mit der **Domain des Mandanten** verschickt werden (`support@kunde-a.de`, dafür sind DNS-Einträge beim Mandanten nötig), oder mit einer eigenen Domain (`kunde-a@support.deine-firma.de`)? | Eigene Domain zum Start (weniger Abstimmung), Mandanten-Domain später je Mandant. |
+| F6 | Sollen Antworten mit der **Domain des Mandanten** verschickt werden (`support@kunde-a.de`, dafür sind DNS-Einträge beim Mandanten nötig), oder mit einer eigenen Domain (`kunde-a@support.deine-firma.de`)? | Versand über das SMTP-Konto des jeweiligen Postfachs (z. B. `auftrag@firma.de`), also mit der echten Adresse des Mandanten. Auf Webhosting ist das der einfachste Weg. |
 | F8 | Nach wie vielen Tagen soll „Gelöst“ automatisch „Geschlossen“ werden, und nach wie vielen Tagen ohne Antwort ein „Wartet auf Kunde“-Ticket gelöst? | 7 bzw. 14 Tage. |
 | F9 | Gibt es mit den Mandanten vertraglich vereinbarte Reaktionszeiten (SLAs)? | Nein, interne Ziele. |
 | F2 | Hat ein Mandant besondere Anforderungen an die Datentrennung (eigene Datenbank, bestimmte Branche)? | Nein. |
@@ -703,19 +709,34 @@ Daraus folgt: Der Auftraggeber kennt PHP und MySQL bereits und betreibt sie. Das
 | Oberfläche | **Laravel Livewire + Filament** (Admin-Bereich) und Blade/Tailwind für die Agenten-Ansicht | Interaktive Oberfläche ohne separates JavaScript-Projekt; Filament liefert Listen, Filter und Formulare für die Admin-Seiten fertig. |
 | Datenbank | **MariaDB 11 / MySQL 8** | Bekannt aus der Mitgliederverwaltung. Volltextsuche über `FULLTEXT`-Index reicht für diese Größe. |
 | Mandantentrennung | `tenant_id` in allen Tabellen, **Global Scope** in Laravel, zusammengesetzte Fremdschlüssel `(tenant_id, id)`, automatische Tests | MySQL hat kein Row-Level-Security wie PostgreSQL. Die Absicherung erfolgt deshalb zentral im Code (ein Scope, den man nicht vergessen kann) und wird durch Tests geprüft, die gezielt mandantenübergreifend zugreifen. Bei 5 Mandanten und ausschließlich eigenem Team ist das angemessen. |
-| Hintergrundjobs | **Laravel Queue mit Datenbank-Treiber** + Laravel Scheduler (ein Cronjob pro Minute) | Keine Redis-Installation nötig; Redis lässt sich später ohne Codeänderung einschalten. |
+| Hintergrundjobs | **Laravel Queue mit Datenbank-Treiber** + Laravel Scheduler, beides über einen Cronjob des Hosters | Läuft auf Webhosting ohne Hintergrundprozess. |
 | E-Mail-Abruf | **webklex/php-imap** (IMAP inkl. OAuth) bzw. Weiterleitung per Inbound-Webhook | Bewährte PHP-Bibliothek. |
 | E-Mail-Parsing | **php-mime-mail-parser** oder `zbateson/mail-mime-parser` | Robustes MIME-Parsing, Anhänge, Zeichensätze. |
 | E-Mail-Versand | **Laravel Mail (Symfony Mailer)** über SMTP bzw. Versanddienst | Pro Mandant eigener Absender/SMTP konfigurierbar. |
 | HTML-Bereinigung | **HTML Purifier** bzw. Symfony HtmlSanitizer | Schutz vor Schadcode in Kundenmails. |
-| Anhänge | Laravel Filesystem, lokal verschlüsselt oder S3-kompatibler Speicher; ClamAV per `clamd` | |
+| Anhänge | Laravel Filesystem auf dem Webspace (außerhalb von `public/`), Auslieferung nur über die Anwendung | Virenscan optional, siehe unten. |
 | Login | Laravel Fortify (Passwort, TOTP-Zwei-Faktor) | Gleiche Sicherheitsstufe wie in der Mitgliederverwaltung. |
 | API | Laravel-Routen mit API-Schlüsseln pro Mandant (Sanctum oder eigener Guard) | Für die Anbindung der Mitgliederverwaltung (Abschnitt 6a.5). |
-| Live-Updates | zunächst kurzes Polling (alle 15–30 s) per Livewire; später Laravel Reverb (WebSocket) | Für 2–10 Agenten reicht Polling. |
-| Betrieb | **kleiner virtueller Server** (z. B. Hetzner oder netcup, 2–4 vCPU, 4–8 GB RAM) mit Laravel Forge oder Ploi bzw. Docker Compose; Deployment per GitHub Actions | Siehe Hinweis unten. |
+| Live-Updates | Polling (alle 15–30 s) per Livewire | WebSockets sind auf Webhosting nicht möglich und bei 2–10 Agenten nicht nötig. |
+| Betrieb | **Vorhandenes Webhosting-Paket**, Deployment per GitHub Actions (SFTP/FTP) | Siehe unten. |
 | Tests | Pest / PHPUnit, inkl. Mandantentrennungs-Tests | |
 
-**Hinweis zum Hosting:** Die Mitgliederverwaltung läuft auf einfachem Webspace. Für das Ticketsystem ist ein **eigener kleiner Server** sinnvoll, weil es dauerhaft im Hintergrund arbeiten muss: Postfächer abrufen, Mails verschicken mit Wiederholung, Anhänge auf Viren prüfen, SLA-Uhren überwachen. Auf Webspace geht das nur eingeschränkt (Cron alle paar Minuten, kein Virenscanner, oft Zeitlimits). Kosten: etwa 5–15 € im Monat. Mit Laravel Forge oder Ploi lässt sich so ein Server ohne tiefe Linux-Kenntnisse einrichten. Siehe F20.
+**Betrieb auf Webhosting (entschieden):** Das Ticketsystem läuft auf einem der vorhandenen Webhosting-Pakete, ohne eigenen Server. Das funktioniert, weil die Last klein ist und alle Hintergrundarbeiten über Cronjobs laufen:
+
+| Aufgabe | Umsetzung auf Webhosting |
+|---|---|
+| Postfächer abrufen | Cronjob ruft `php artisan schedule:run` auf, so oft der Hoster erlaubt (ideal jede Minute, sonst alle 5 Minuten). **Abrufintervall pro Postfach einstellbar** (z. B. 5, 10 oder 15 Minuten). Pro Durchlauf wird nur eine begrenzte Zahl Mails verarbeitet, damit das Zeitlimit von PHP nicht greift; der Rest folgt beim nächsten Lauf. |
+| Sofortiger Eingang (optional) | Weiterleitung an einen Inbound-Dienst, der per Webhook die normale Web-Adresse des Ticketsystems aufruft. Das braucht keinen Hintergrundprozess. |
+| Mails verschicken | Zuerst direkt beim Klick auf „Senden“ (SMTP des Mandanten-Postfachs); schlägt das fehl, kommt die Mail in die Warteschlange und der Cronjob versucht es erneut. |
+| Warteschlange, SLA-Prüfung, Erinnerungen, automatisches Schließen | Laravel Queue mit Datenbank-Treiber, abgearbeitet im selben Cronjob (`queue:work --stop-when-empty --max-time=50`). |
+| Virenscan | Auf Webhosting gibt es meist kein ClamAV. Stattdessen: Dateityp-Prüfung am Inhalt, Download nur als Datei, Warnhinweis bei Programmen (APK, EXE), keine Vorschau für riskante Typen. Optional später ein externer Scan-Dienst mit Sitz in der EU. |
+| Live-Updates | Die Arbeitsliste fragt alle 15–30 Sekunden nach Neuem (Polling). Für 2–10 Agenten völlig ausreichend. |
+| Deployment | GitHub Actions baut das Projekt (inkl. `vendor/`) und lädt es per SFTP/FTP auf den Webspace; Composer muss beim Hoster also nicht vorhanden sein. Datenbank-Migrationen laufen über einen geschützten Aufruf oder per SSH, falls vorhanden. |
+| Backup | Datenbank- und Datei-Sicherung des Hosters, zusätzlich ein nächtlicher Export per Cronjob in die Nextcloud. |
+
+**Voraussetzungen beim Hoster** (siehe F23): PHP 8.2 oder neuer mit den Erweiterungen `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `zip`, `curl` (und idealerweise `imap` oder `sockets`); MySQL/MariaDB; Cronjobs (am besten im Minutentakt); Document-Root auf den Ordner `public/` einstellbar; ausgehende Verbindungen zu IMAP/SMTP-Servern (Ports 993/465/587) erlaubt; SSH wäre schön, ist aber nicht zwingend.
+
+Sollte es später einmal mehr Last oder Anforderungen geben (z. B. sofortiger Mailabruf per IMAP IDLE, Virenscan), lässt sich dieselbe Anwendung ohne Umbau auf einen kleinen Server umziehen.
 
 **Warum nicht der TypeScript-Stack aus dem ersten Entwurf?** Er wäre technisch ebenso geeignet, würde aber eine zweite Sprache für das Backend, eine andere Datenbank und zusätzliche Dienste bedeuten. Für einen Einzelentwickler, der PHP und MySQL schon betreibt, überwiegt der Vorteil, bei einer Technik zu bleiben.
 
@@ -745,7 +766,8 @@ Zugeschnitten auf einen Entwickler mit Claude, 5 Mandanten und ein kleines Team.
 
 ### Phase 0 – Fundament (ca. 2 Wochen)
 
-- Laravel-Projekt, CI (GitHub Actions), lokale Entwicklungsumgebung (z. B. Laravel Herd oder Sail, mit MariaDB, ClamAV und Mailpit zum Testen von Mails)
+- Laravel-Projekt, CI (GitHub Actions) mit automatischem Deployment auf das Webhosting, lokale Entwicklungsumgebung (z. B. Laravel Herd, mit MariaDB und Mailpit zum Testen von Mails)
+- Prüfen, ob das gewählte Hosting-Paket die Voraussetzungen erfüllt (F23), mit einer kleinen Test-Installation inkl. Cronjob
 - Schema für Mandanten, Nutzer, Mitgliedschaften; Mandanten-Scope + automatische Tests, dass Mandant A keine Daten von Mandant B sieht
 - Login mit MFA; Admin legt Mandanten und Nutzer an
 
@@ -774,7 +796,7 @@ Ziel: Das Team wickelt den Support aller 5 Mandanten komplett über das System a
 - Einfache SLAs (Erstreaktion, Lösung) mit Geschäftszeiten und farbiger Warnanzeige
 - Ticket-Historie, Audit-Log, Volltextsuche
 - Admin-Seiten: Mandanten, Postfächer, API-Schlüssel, Nutzer, Vorlagen
-- Backup und Monitoring auf dem Produktivserver
+- Backup (Hoster + nächtlicher Export) und Überwachung: Hinweis in der Oberfläche, wenn ein Postfach länger nicht abgerufen wurde oder der Cronjob nicht läuft
 
 ### Phase 2 – Ausbau (nach Bedarf)
 
@@ -800,7 +822,7 @@ Wegen der kleinen Größe und des Dienstleister-Modells entfallen gegenüber ein
 
 ### Nächste Schritte
 
-1. F20 (Hosting) und F21 (Mandant = Vereinsinstallation?) beantworten, danach F17, F19 und F6.
+1. F22 (Mitarbeiter des Mandanten oder eigenes Team?) und F23 (Hoster) beantworten, danach F17, F19 und F6.
 2. Konzept final abstimmen und den Pull Request mergen.
 3. Optional: UI-Entwürfe der Kernscreens (Arbeitsliste, Ticketdetail, Postfach- und API-Schlüssel-Einrichtung).
 4. Phase 0 starten: Repository-Grundgerüst und Mandantentrennung mit Tests.

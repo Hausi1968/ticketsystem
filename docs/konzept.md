@@ -1,6 +1,6 @@
 # Ticketsystem – Konzept und Architektur
 
-Stand: 14.11.2026 · Status: Entwurf zur Abstimmung, Rahmen geklärt
+Stand: 14.11.2026 · Status: Entwurf zur Abstimmung, Rahmen und Stack geklärt
 
 Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsystem. Tickets entstehen aus eingehenden E-Mails und direkt aus der Anwendung der Mandanten, werden Mitarbeitern bzw. Teams zugewiesen und per E-Mail beantwortet. Es legt die Grundentscheidungen fest, die später teuer zu ändern sind: Mandantentrennung, Datenmodell, E-Mail-Verarbeitung, Rechte und Technik. Offene Punkte stehen gesammelt in [Abschnitt 14](#14-offene-fragen).
 
@@ -9,8 +9,9 @@ Dieses Dokument beschreibt ein mandantenfähiges, extern betriebenes Ticketsyste
 | Punkt | Entscheidung | Folge für das Konzept |
 |---|---|---|
 | Wer bearbeitet Tickets? | **Nur das eigene Team** bearbeitet die Tickets aller Mandanten (Dienstleister-Modell). | Mandanten bekommen keine Agenten-Zugänge. Jeder Agent arbeitet mandantenübergreifend; eine gemeinsame Arbeitsliste über alle Mandanten ist die Hauptansicht. |
-| Größe | **ca. 5 Mandanten, 2–10 Mitarbeiter** | Ein Server reicht; keine Clusterlösung, keine eigene Suchmaschine. Einfache Lösungen haben Vorrang. |
+| Größe | **ca. 5 Mandanten, 2–10 Mitarbeiter** | Ein kleiner Server reicht; keine Clusterlösung, keine eigene Suchmaschine. Einfache Lösungen haben Vorrang. |
 | Entwicklung und Betrieb | **Der Auftraggeber selbst** (mit Claude) | Möglichst wenig Bausteine, die betrieben werden müssen; ein Repository, ein Deployment. |
+| Anwendung | **Mitgliederverwaltung** (PHP + MySQL auf Webspace, dazu Handy-App mit Expo/React Native), je Verein eine Installation | Ticketsystem ebenfalls in **PHP (Laravel) mit MySQL/MariaDB** ([Abschnitt 15](#15-tech-stack-empfehlung)); jede Vereinsinstallation ist ein Mandant mit eigenem API-Schlüssel. |
 | Eigenentwicklung? | **Ja.** Hauptgrund: Nutzer der Mandanten sollen aus einer eigenen, mit Claude erstellten Anwendung heraus Tickets anlegen, wenn dort etwas nicht klappt. | Neuer, gleichwertiger Kanal **„App“** neben E-Mail, mit eigener API (siehe [Abschnitt 6a](#6a-ticket-anlage-aus-der-anwendung)). |
 
 ---
@@ -102,10 +103,10 @@ Technisch bleibt trotzdem die Tabelle `tenant_memberships` (Nutzer × Mandant ×
 | B. Ein Schema pro Mandant | Gleiche DB, separate Postgres-Schemas | Bessere Trennung, einfacher Export pro Mandant | Migrationen × Mandanten, Connection-Handling aufwendiger |
 | C. Eine Datenbank pro Mandant | Physisch getrennt | Maximale Isolation, eigene Backups | Hoher Betriebsaufwand, teuer bei vielen Mandanten |
 
-**Empfehlung: Variante A mit PostgreSQL Row-Level-Security (RLS)** als doppelte Absicherung:
+**Empfehlung: Variante A.** Mit dem empfohlenen Stack (PHP/Laravel, MySQL/MariaDB, siehe Abschnitt 15) gibt es keine Row-Level-Security in der Datenbank. Die Absicherung läuft deshalb über die Punkte 1 und 3 bis 5. Punkt 2 gilt nur, falls doch PostgreSQL eingesetzt wird:
 
-1. **Anwendungsebene:** Jede Anfrage bekommt aus der Sitzung einen Mandantenkontext. Alle Repository-Zugriffe filtern zwingend auf `tenant_id` (zentral erzwungen, nicht in jeder Abfrage von Hand).
-2. **Datenbankebene:** Die App setzt pro Transaktion `SET LOCAL app.tenant_id = '…'`. RLS-Policies auf allen Mandantentabellen lassen nur Zeilen dieses Mandanten zu. Ein vergessener Filter im Code führt damit zu leeren Ergebnissen statt zu einem Datenleck.
+1. **Anwendungsebene:** Jede Anfrage bekommt aus der Sitzung einen Mandantenkontext. Alle Zugriffe filtern zwingend auf `tenant_id`, zentral erzwungen über einen Global Scope auf allen Mandanten-Modellen und nicht in jeder Abfrage von Hand. Zusammengesetzte Fremdschlüssel `(tenant_id, id)` verhindern zusätzlich Verweise über Mandantengrenzen.
+2. **Datenbankebene (nur bei PostgreSQL):** Die App setzt pro Transaktion `SET LOCAL app.tenant_id = '…'`. RLS-Policies auf allen Mandantentabellen lassen nur Zeilen dieses Mandanten zu. Ein vergessener Filter im Code führt damit zu leeren Ergebnissen statt zu einem Datenleck.
 3. **Objektspeicher:** Anhänge und Roh-Mails liegen unter `tenants/<tenant_id>/…`; Zugriff nur über kurzlebige, signierte URLs, die die App nach Rechteprüfung ausstellt.
 4. **Suche/Cache/Queues:** Mandanten-ID ist Teil jedes Suchindex-Filters, jedes Cache-Keys und jedes Job-Payloads.
 5. **Tests:** Automatisierte Tests, die gezielt versuchen, mit Mandant A auf Daten von Mandant B zuzugreifen (API und DB).
@@ -114,7 +115,7 @@ Falls einzelne Mandanten vertraglich physische Trennung verlangen (z. B. Behörd
 
 ### 3.3 Mandanten-Identifikation
 
-- **Agenten-Oberfläche:** Login einmal pro Nutzer. Listen laufen mandantenübergreifend über die Mandanten, in denen der Nutzer Mitglied ist (RLS-Policy prüft „`tenant_id` ∈ Mitgliedschaften“); beim Öffnen eines Tickets wird dessen Mandant zum aktiven Kontext für alle Schreibvorgänge.
+- **Agenten-Oberfläche:** Login einmal pro Nutzer. Listen laufen mandantenübergreifend über die Mandanten, in denen der Nutzer Mitglied ist (der Mandanten-Scope prüft „`tenant_id` ∈ Mitgliedschaften“); beim Öffnen eines Tickets wird dessen Mandant zum aktiven Kontext für alle Schreibvorgänge.
 - **App-Anbindung:** Mandant ergibt sich aus dem API-Schlüssel, mit dem die Anwendung sich meldet.
 - **Kundenportal (Phase 2):** Subdomain pro Mandant (`kunde-a.tickets.example.de`) oder eigene Domain per CNAME.
 - **E-Mail-Eingang:** Mandant und Postfach ergeben sich aus der Empfängeradresse bzw. dem Postfach, aus dem abgerufen wurde.
@@ -130,16 +131,16 @@ flowchart LR
         MS[M365 / Google / IMAP-Postfächer]
         IP[Inbound-Mail-Dienst<br/>Webhook]
         SP[SMTP / Versanddienst]
-        APP[Anwendung der Mandanten<br/>Button 'Problem melden']
+        APP[Mitgliederverwaltung<br/>Web + Handy-App<br/>'Problem melden']
     end
 
     subgraph Plattform
         WEB[Web-Frontend<br/>Agenten + Admin]
         API[API-Server<br/>REST + WebSocket]
         WRK[Worker<br/>Mail, SLA, Automationen]
-        DB[(PostgreSQL<br/>mit RLS)]
-        RQ[(Redis<br/>Jobs, Cache, Pub/Sub)]
-        S3[(Objektspeicher<br/>Roh-Mails, Anhänge)]
+        DB[(MySQL / MariaDB)]
+        RQ[(Job-Queue<br/>in DB, Redis optional)]
+        S3[(Dateispeicher<br/>Roh-Mails, Anhänge)]
         AV[Virenscanner]
     end
 
@@ -166,8 +167,8 @@ flowchart LR
 - **Web-Frontend:** Single-Page-App für das Support-Team (Agenten und Admin); Live-Updates über WebSocket (neue Tickets, „wird gerade von X bearbeitet“).
 - **API-Server:** Zustandslos, horizontal skalierbar. Authentifizierung, Rechteprüfung, Mandantenkontext, Geschäftslogik. REST-API mit API-Schlüsseln pro Mandant, vor allem für die Ticket-Anlage aus der Anwendung.
 - **Worker:** Verarbeiten alles Asynchrone über eine Job-Queue: Mail-Abruf, Mail-Parsing, Versand mit Wiederholungen, SLA-Prüfung, Automationen, Benachrichtigungen, Webhooks, Löschfristen.
-- **PostgreSQL:** Primärdatenhaltung inkl. Volltextsuche im MVP.
-- **Redis:** Job-Queue, Cache, Pub/Sub für Live-Updates, Rate-Limits.
+- **MySQL/MariaDB:** Primärdatenhaltung inkl. Volltextsuche.
+- **Job-Queue:** zunächst in der Datenbank, Redis optional für später.
 - **Objektspeicher (S3-kompatibel):** Roh-Mails (`.eml`) und Anhänge, verschlüsselt.
 - **Virenscanner (ClamAV):** Prüft Anhänge vor der Freigabe.
 
@@ -395,14 +396,25 @@ Zusätzlich zur Meldung durch den Nutzer kann die Anwendung schwere Fehler auch 
 
 Ob das gewünscht ist, ist offen (F17).
 
-### 6a.5 Was in der Anwendung zu bauen ist
+### 6a.5 Anbindung der Mitgliederverwaltung
 
-- Button bzw. Menüpunkt „Problem melden“ mit kurzem Formular (Betreff, Beschreibung, optional Screenshot)
-- Server-Endpunkt in der Anwendung, der Kontext ergänzt und das Ticketsystem aufruft
-- API-Schlüssel des Mandanten in der Konfiguration der Anwendung (als Geheimnis, nicht im Code)
-- Optional: Liste „Meine Meldungen“ und Empfang der Webhooks
+Die Anwendung ist die Mitgliederverwaltung (PHP/MySQL auf Webspace, dazu die Handy-App mit Expo/React Native). Jede Vereinsinstallation entspricht einem Mandanten und bekommt einen eigenen API-Schlüssel. Die Anbindung ist in beiden Teilen klein:
 
-Ein kleines **Client-Paket** (TypeScript) mit fertigen Typen und Aufrufen erleichtert die Anbindung; es entsteht zusammen mit der API.
+**Weboberfläche (PHP)**
+- Neue Datei `inc/tickets.php`: ein schlanker Client mit cURL (die Mitgliederverwaltung nutzt cURL bereits, etwa für Nextcloud), ohne Composer. Er schickt Meldung, Anhänge und Kontext an das Ticketsystem.
+- Neue Einstellung unter *Verwaltung → Support / Ticketsystem* (nur Administrator): Adresse des Ticketsystems und API-Schlüssel. Der Schlüssel wird wie das SMTP- und das Nextcloud-Passwort verschlüsselt gespeichert und nie angezeigt.
+- In der Hilfe (3D-Fragezeichen) kommt ein Eintrag **„Problem melden“** dazu, mit Formular für Betreff, Beschreibung und Anhänge (Screenshot, PDF usw.). Automatisch mitgeschickt werden angemeldeter Benutzer und seine E-Mail, die Rolle, die aktuelle Seite, die Version der Mitgliederverwaltung, Browser und, falls vorhanden, die letzte Fehlermeldung.
+- Optional: Bei einem unerwarteten PHP-Fehler bietet die Fehlerseite direkt „Problem melden“ an, mit vorausgefülltem Kontext.
+
+**Handy-App (Expo)**
+- Auf dem Hilfe-Bildschirm kommt ein Knopf **„Problem melden“** dazu, mit Formular, Foto bzw. Screenshot aus der Galerie und Dateiauswahl.
+- Die App ruft **nicht** direkt das Ticketsystem auf, sondern eine neue Route `api.php?r=support_ticket` der Mitgliederverwaltung. So bleibt der API-Schlüssel auf dem Server, und die Anmeldung und Rechte der App gelten wie gewohnt. Die Mitgliederverwaltung ergänzt den Kontext und leitet weiter.
+- Zum Kontext gehören hier zusätzlich die App-Version (die Mitgliederverwaltung erfasst sie schon unter *App-Versionen*), das Betriebssystem und das Gerätemodell.
+- Ob das ohne neue App-Version per Update-Funktion ausgeliefert werden kann, hängt davon ab, ob neue native Module nötig sind (z. B. für die Dateiauswahl).
+
+**Ticketsystem-Seite**
+- Mit der API entsteht eine fertige Einzeldatei `clients/php/TicketClient.php`, die in die Mitgliederverwaltung übernommen werden kann.
+- Die Umsetzung in der Mitgliederverwaltung ist eine eigene Aufgabe in deren Repository.
 
 ## 6b. Anhänge
 
@@ -645,6 +657,7 @@ Schutz vor Regelschleifen: Jede Regel wirkt pro Ereignis höchstens einmal; begr
 | F3 | Mengengerüst | ca. 5 Mandanten, 2–10 Mitarbeiter. |
 | F14 | Wer entwickelt und betreibt? | Der Auftraggeber selbst. |
 | F15 | Eigenentwicklung oder Open Source? | Eigenentwicklung, wegen der Ticket-Anlage aus der eigenen Anwendung. |
+| F16 | Technik der Anwendung | Mitgliederverwaltung: PHP + MySQL auf Webspace, Handy-App mit Expo/React Native. |
 | F18 | Anhänge | Alle gängigen Dateien inkl. Screenshots, PDF, DOCX, XLSX, APK (Abschnitt 6b). |
 
 ### Noch offen
@@ -653,12 +666,12 @@ Die Annahmen in der rechten Spalte gelten, bis eine Antwort vorliegt. Die wichti
 
 | # | Frage | Annahme bis zur Klärung |
 |---|---|---|
-| F16 | **Zur Anwendung:** Mit welcher Technik ist sie gebaut (Sprache, Framework, Datenbank, Hosting)? Ist sie selbst mandantenfähig, und entsprechen ihre Mandanten den Mandanten im Ticketsystem? Sind die Nutzer dort angemeldet und ist ihre E-Mail-Adresse bekannt? | Eigene Web-Anwendung mit Login; Mandanten 1:1; E-Mail des Nutzers bekannt. Wenn sie in TypeScript gebaut ist, sollte das Ticketsystem denselben Stack nutzen. |
+| F20 | **Hosting:** Ist ein eigener kleiner Server (z. B. Hetzner, ca. 5–15 €/Monat) für das Ticketsystem in Ordnung, oder muss es auf dem vorhandenen Webspace laufen? Bei welchem Hoster liegt die Mitgliederverwaltung? | Eigener kleiner Server. |
+| F21 | **Mandanten:** Ist jeder Mandant ein Verein mit eigener Installation der Mitgliederverwaltung? Gibt es Mandanten, die keine Mitgliederverwaltung nutzen und nur per E-Mail Tickets schicken? | Ja, je Verein eine Installation; E-Mail-Kanal trotzdem für alle. |
 | F17 | Soll die Anwendung schwere Fehler auch **automatisch** melden (ohne Klick des Nutzers), oder nur Meldungen durch Nutzer? | Zuerst nur Nutzermeldungen; automatische Meldungen in Phase 2. |
 | F19 | Sollen Nutzer den **Stand ihrer Meldungen in der Anwendung** sehen (Liste „Meine Meldungen“), oder reicht die Kommunikation per E-Mail? | E-Mail reicht im MVP; API für die Liste ist vorbereitet. |
 | F5 | Welche Mailsysteme nutzen die Mandanten (Microsoft 365, Google, IMAP)? Ist eine Weiterleitung an eine Plattformadresse für sie in Ordnung? | Weiterleitung zum Start in Ordnung. |
 | F6 | Sollen Antworten mit der **Domain des Mandanten** verschickt werden (`support@kunde-a.de`, dafür sind DNS-Einträge beim Mandanten nötig), oder mit einer eigenen Domain (`kunde-a@support.deine-firma.de`)? | Eigene Domain zum Start (weniger Abstimmung), Mandanten-Domain später je Mandant. |
-| F10 | Wo soll gehostet werden (eigener Server, Hetzner, IONOS, …), und gibt es dort schon etwas, z. B. die Anwendung? | Ein Server bei einem deutschen Hoster, gern neben der Anwendung. |
 | F8 | Nach wie vielen Tagen soll „Gelöst“ automatisch „Geschlossen“ werden, und nach wie vielen Tagen ohne Antwort ein „Wartet auf Kunde“-Ticket gelöst? | 7 bzw. 14 Tage. |
 | F9 | Gibt es mit den Mandanten vertraglich vereinbarte Reaktionszeiten (SLAs)? | Nein, interne Ziele. |
 | F2 | Hat ein Mandant besondere Anforderungen an die Datentrennung (eigene Datenbank, bestimmte Branche)? | Nein. |
@@ -670,48 +683,60 @@ Entfallen: F4 (Verkauf als Produkt an Dritte), weil die Mandanten nicht selbst i
 
 ## 15. Tech-Stack-Empfehlung
 
-Kriterien: verbreitet und gut dokumentiert, ein Sprach-Ökosystem für Frontend und Backend (ein Entwickler), gute Bibliotheken für E-Mail, wenig Betriebsaufwand, problemloser Betrieb in der EU.
+### 15.1 Ausgangslage
 
-**Wichtig:** Ist die Anwendung, aus der Tickets gemeldet werden, schon mit einem bestimmten Stack gebaut (F16), sollte das Ticketsystem möglichst denselben nutzen. Dann teilen beide Werkzeuge, Hosting und Wissen, und das Client-Paket passt direkt. Die folgende Empfehlung gilt, falls die Anwendung ebenfalls TypeScript nutzt oder noch nichts festgelegt ist.
+Die Anwendung, aus der Tickets gemeldet werden, ist die **Mitgliederverwaltung** (Repository `Hausi1968/Mitgliederverwaltung`):
 
-| Bereich | Empfehlung | Begründung / Alternative |
+- Weboberfläche in **PHP (ab 7.4, empfohlen 8.x) mit MySQL**, ohne Composer und ohne Framework, betrieben auf normalem Webspace
+- Handy-App für Android/iOS mit **Expo / React Native** (TypeScript), die über `api.php` auf die Weboberfläche zugreift
+- Eigener SMTP-Versand, Cronjob (`cron.php`), Rollen und Rechte, Zwei-Faktor-Anmeldung
+- Pro Verein eine eigene Installation mit eigener Datenbank
+
+Daraus folgt: Der Auftraggeber kennt PHP und MySQL bereits und betreibt sie. Das Ticketsystem sollte deshalb **ebenfalls PHP mit MySQL/MariaDB** nutzen und nicht einen zweiten Technik-Stack (Node.js, PostgreSQL, Redis) einführen.
+
+### 15.2 Empfehlung
+
+| Bereich | Empfehlung | Begründung |
 |---|---|---|
-| Sprache | **TypeScript** durchgängig | Ein Team kann Frontend und Backend bearbeiten; gemeinsame Typen für API. Alternative: C#/.NET oder PHP/Laravel, falls im Team vorhanden. |
-| Backend | **Node.js mit NestJS** | Klare Modulstruktur für den modularen Monolithen, Guards für Rechte/Mandantenkontext, WebSockets eingebaut. |
-| Datenbank | **PostgreSQL 17** | Row-Level-Security, JSONB für flexible Felder, Volltextsuche (deutsch) für das MVP. |
-| ORM / Migrationen | **Drizzle ORM** oder Prisma | Drizzle: nah an SQL, RLS-freundlich, gute Migrationen. |
-| Jobs / Queue | **BullMQ auf Redis (bzw. Valkey)** | Wiederholungen, Verzögerungen, wiederkehrende Jobs (SLA, Abruf). |
-| E-Mail Parsing | **mailparser** (Nodemailer-Projekt) | Robustes MIME-Parsing inkl. Anhänge und Zeichensätze. |
-| IMAP | **ImapFlow** | Moderner IMAP-Client mit IDLE und OAuth2. |
-| M365 / Google | **Microsoft Graph SDK**, **Google APIs** | Offizielle OAuth-Anbindung. |
-| Versand | **Nodemailer** + Versanddienst mit EU-Rechenzentrum (z. B. Postmark EU, Mailgun EU, Brevo) oder eigener Postfix mit DKIM | Zustellstatus- und Bounce-Webhooks; Auswahl je nach F6/F10. |
-| Inbound per Weiterleitung | Inbound-Webhook des Versanddienstes oder eigener Postfix/Haraka | Eigener MTA = volle Kontrolle, Dienst = weniger Betrieb. |
-| HTML-Bereinigung | **DOMPurify** (serverseitig mit jsdom) | Bewährt gegen XSS. |
-| Frontend | **React + Vite**, TanStack Query/Router, UI-Bibliothek z. B. Mantine oder shadcn/ui | Schnelle, interaktive Agenten-Oberfläche. Next.js erst mit dem Kundenportal sinnvoll. |
-| Editor | **TipTap** | Rich-Text für Antworten, Erwähnungen, Vorlagen. |
-| Auth | Eigene Implementierung mit bewährten Bausteinen (Argon2, TOTP), z. B. über **Better Auth** | Für 2–10 interne Nutzer reicht das; Keycloak wäre ein zusätzlicher Dienst ohne echten Mehrwert. |
-| Objektspeicher | S3-kompatibel (Hetzner Object Storage, IONOS, MinIO lokal) | |
-| Suche | PostgreSQL-Volltext | Reicht für diese Größe dauerhaft. |
-| Virenscan | ClamAV als eigener Container | |
-| Betrieb | Docker Compose auf einem Server, Deployment per GitHub Actions; Reverse-Proxy mit automatischem TLS (Caddy) | Kubernetes ist bei dieser Größe unnötig. |
-| Monitoring | Sentry (oder GlitchTip), Prometheus + Grafana, strukturierte Logs | |
+| Sprache | **PHP 8.3** | Gleiche Sprache wie die Mitgliederverwaltung. |
+| Framework | **Laravel 12** | Anders als bei der Mitgliederverwaltung lohnt sich hier ein Framework: Warteschlangen, Zeitplaner, Mailversand, Datei-Uploads, Rechteprüfung, Datenbank-Migrationen und Tests sind eingebaut. Das spart viel eigenen Code für E-Mail-Verarbeitung und Hintergrundjobs. |
+| Oberfläche | **Laravel Livewire + Filament** (Admin-Bereich) und Blade/Tailwind für die Agenten-Ansicht | Interaktive Oberfläche ohne separates JavaScript-Projekt; Filament liefert Listen, Filter und Formulare für die Admin-Seiten fertig. |
+| Datenbank | **MariaDB 11 / MySQL 8** | Bekannt aus der Mitgliederverwaltung. Volltextsuche über `FULLTEXT`-Index reicht für diese Größe. |
+| Mandantentrennung | `tenant_id` in allen Tabellen, **Global Scope** in Laravel, zusammengesetzte Fremdschlüssel `(tenant_id, id)`, automatische Tests | MySQL hat kein Row-Level-Security wie PostgreSQL. Die Absicherung erfolgt deshalb zentral im Code (ein Scope, den man nicht vergessen kann) und wird durch Tests geprüft, die gezielt mandantenübergreifend zugreifen. Bei 5 Mandanten und ausschließlich eigenem Team ist das angemessen. |
+| Hintergrundjobs | **Laravel Queue mit Datenbank-Treiber** + Laravel Scheduler (ein Cronjob pro Minute) | Keine Redis-Installation nötig; Redis lässt sich später ohne Codeänderung einschalten. |
+| E-Mail-Abruf | **webklex/php-imap** (IMAP inkl. OAuth) bzw. Weiterleitung per Inbound-Webhook | Bewährte PHP-Bibliothek. |
+| E-Mail-Parsing | **php-mime-mail-parser** oder `zbateson/mail-mime-parser` | Robustes MIME-Parsing, Anhänge, Zeichensätze. |
+| E-Mail-Versand | **Laravel Mail (Symfony Mailer)** über SMTP bzw. Versanddienst | Pro Mandant eigener Absender/SMTP konfigurierbar. |
+| HTML-Bereinigung | **HTML Purifier** bzw. Symfony HtmlSanitizer | Schutz vor Schadcode in Kundenmails. |
+| Anhänge | Laravel Filesystem, lokal verschlüsselt oder S3-kompatibler Speicher; ClamAV per `clamd` | |
+| Login | Laravel Fortify (Passwort, TOTP-Zwei-Faktor) | Gleiche Sicherheitsstufe wie in der Mitgliederverwaltung. |
+| API | Laravel-Routen mit API-Schlüsseln pro Mandant (Sanctum oder eigener Guard) | Für die Anbindung der Mitgliederverwaltung (Abschnitt 6a.5). |
+| Live-Updates | zunächst kurzes Polling (alle 15–30 s) per Livewire; später Laravel Reverb (WebSocket) | Für 2–10 Agenten reicht Polling. |
+| Betrieb | **kleiner virtueller Server** (z. B. Hetzner oder netcup, 2–4 vCPU, 4–8 GB RAM) mit Laravel Forge oder Ploi bzw. Docker Compose; Deployment per GitHub Actions | Siehe Hinweis unten. |
+| Tests | Pest / PHPUnit, inkl. Mandantentrennungs-Tests | |
 
-### Vorgeschlagene Repository-Struktur
+**Hinweis zum Hosting:** Die Mitgliederverwaltung läuft auf einfachem Webspace. Für das Ticketsystem ist ein **eigener kleiner Server** sinnvoll, weil es dauerhaft im Hintergrund arbeiten muss: Postfächer abrufen, Mails verschicken mit Wiederholung, Anhänge auf Viren prüfen, SLA-Uhren überwachen. Auf Webspace geht das nur eingeschränkt (Cron alle paar Minuten, kein Virenscanner, oft Zeitlimits). Kosten: etwa 5–15 € im Monat. Mit Laravel Forge oder Ploi lässt sich so ein Server ohne tiefe Linux-Kenntnisse einrichten. Siehe F20.
+
+**Warum nicht der TypeScript-Stack aus dem ersten Entwurf?** Er wäre technisch ebenso geeignet, würde aber eine zweite Sprache für das Backend, eine andere Datenbank und zusätzliche Dienste bedeuten. Für einen Einzelentwickler, der PHP und MySQL schon betreibt, überwiegt der Vorteil, bei einer Technik zu bleiben.
+
+### 15.3 Vorgeschlagene Repository-Struktur (Laravel)
 
 ```
 ticketsystem/
-├── apps/
-│   ├── api/          # NestJS: HTTP-API + WebSocket
-│   ├── worker/       # NestJS-Standalone: Jobs (Mail, SLA, Automationen)
-│   └── web/          # React-Frontend
-├── packages/
-│   ├── db/           # Schema, Migrationen, RLS-Policies
-│   ├── mail/         # Parsing, Threading, Versand
-│   ├── client/       # TypeScript-Client für die Anwendung
-│   └── shared/       # Typen, Validierung (zod)
-├── docs/
-│   └── konzept.md
-└── docker-compose.yml
+├── app/
+│   ├── Models/            # Tenant, Ticket, Message, Attachment, Contact, …
+│   ├── Tenancy/           # Mandanten-Scope, Mandantenkontext
+│   ├── Mail/Inbound/      # Abruf, Parsing, Threading, Schleifenschutz
+│   ├── Mail/Outbound/     # Versand, Zustellstatus
+│   ├── Sla/               # Geschäftszeiten, Timer
+│   ├── Http/Controllers/Api/  # API für die Mitgliederverwaltung
+│   └── Livewire/          # Arbeitsliste, Ticketdetail
+├── database/migrations/
+├── resources/views/
+├── routes/ (web.php, api.php)
+├── tests/ (Feature/TenantIsolationTest.php, …)
+├── clients/php/TicketClient.php   # Einzeldatei für die Mitgliederverwaltung
+└── docs/konzept.md
 ```
 
 ## 16. MVP und Roadmap
@@ -720,8 +745,8 @@ Zugeschnitten auf einen Entwickler mit Claude, 5 Mandanten und ein kleines Team.
 
 ### Phase 0 – Fundament (ca. 2 Wochen)
 
-- Repository, CI (GitHub Actions), Docker-Compose-Umgebung (Postgres, Redis, MinIO, ClamAV, Mailpit zum Testen von Mails)
-- Schema für Mandanten, Nutzer, Mitgliedschaften; RLS-Policies + automatische Tests, dass Mandant A keine Daten von Mandant B sieht
+- Laravel-Projekt, CI (GitHub Actions), lokale Entwicklungsumgebung (z. B. Laravel Herd oder Sail, mit MariaDB, ClamAV und Mailpit zum Testen von Mails)
+- Schema für Mandanten, Nutzer, Mitgliedschaften; Mandanten-Scope + automatische Tests, dass Mandant A keine Daten von Mandant B sieht
 - Login mit MFA; Admin legt Mandanten und Nutzer an
 
 ### Phase 1 – MVP (ca. 8–12 Wochen)
@@ -741,8 +766,8 @@ Ziel: Das Team wickelt den Support aller 5 Mandanten komplett über das System a
 **App-Anbindung**
 - API-Schlüssel pro Mandant, `POST /api/v1/tickets`, Anhang-Upload, `GET` für Status
 - Kasten „Technische Details“ im Ticket
-- TypeScript-Client-Paket und Anleitung zum Einbau in die Anwendung
-- Einbau des Buttons „Problem melden“ in die Anwendung (eigene Aufgabe im Repo der Anwendung)
+- PHP-Client als Einzeldatei und Anleitung zum Einbau
+- „Problem melden“ in Weboberfläche und Handy-App der Mitgliederverwaltung (eigene Aufgabe in deren Repository, Abschnitt 6a.5)
 
 **Rund herum**
 - Benachrichtigungen an Agenten (in der Oberfläche + E-Mail)
@@ -775,7 +800,7 @@ Wegen der kleinen Größe und des Dienstleister-Modells entfallen gegenüber ein
 
 ### Nächste Schritte
 
-1. F16 (Technik der Anwendung) beantworten, denn daran hängt der Stack. Danach F17, F19, F6 und F10.
+1. F20 (Hosting) und F21 (Mandant = Vereinsinstallation?) beantworten, danach F17, F19 und F6.
 2. Konzept final abstimmen und den Pull Request mergen.
 3. Optional: UI-Entwürfe der Kernscreens (Arbeitsliste, Ticketdetail, Postfach- und API-Schlüssel-Einrichtung).
 4. Phase 0 starten: Repository-Grundgerüst und Mandantentrennung mit Tests.

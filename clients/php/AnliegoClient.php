@@ -108,6 +108,23 @@ class AnliegoClient
     }
 
     /**
+     * Antwort des Nutzers auf sein Ticket. $reporter mit external_user_id und/oder email.
+     * Liefert die Kurzform des Tickets; bei follow_up = true ist es ein neues Folgeticket.
+     *
+     * @param array<string, string> $reporter
+     * @param list<string> $attachmentIds
+     * @return array<string, mixed>
+     */
+    public function reply(string $reference, string $body, array $reporter, array $attachmentIds = []): array
+    {
+        return $this->request('POST', '/api/v1/tickets/' . rawurlencode($reference) . '/messages', json_encode([
+            'body' => $body,
+            'reporter' => $reporter,
+            'attachment_ids' => $attachmentIds,
+        ]), ['Content-Type: application/json']);
+    }
+
+    /**
      * @param string|array<string, mixed>|null $body
      * @param list<string> $headers
      * @return array<string, mixed>

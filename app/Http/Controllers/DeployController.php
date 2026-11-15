@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Artisan;
+use Throwable;
 
 /**
  * Für Hosting ohne SSH: Nach dem Upload ruft GitHub Actions diese Adresse mit dem geheimen
@@ -21,10 +22,30 @@ class DeployController
 
         abort_if($token === '' || ! hash_equals($token, $given), 404);
 
+        // Webhosting hat oft knappe Grenzen; das Aufbauen der Caches braucht etwas mehr
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
+
         $output = [];
+        $migrated = true;
         foreach (['migrate --force', 'optimize:clear', 'optimize', 'filament:optimize'] as $command) {
-            Artisan::call($command);
-            $output[] = "> {$command}\n".trim(Artisan::output());
+            try {
+                Artisan::call($command);
+                $output[] = "> {$command}\n".trim(Artisan::output());
+            } catch (Throwable $e) {
+                report($e);
+                $output[] = "> {$command}\nFEHLER: ".get_class($e).': '.$e->getMessage()
+                    .' ('.str_replace(base_path().'/', '', $e->getFile()).':'.$e->getLine().')';
+                if ($command === 'migrate --force') {
+                    $migrated = false;
+                    break; // ohne passende Datenbank keine Caches aufbauen
+                }
+                // Caches sind nur Beschleunigung: lieber ohne als mit halbem Stand weiterlaufen
+                try {
+                    Artisan::call('optimize:clear');
+                } catch (Throwable) {
+                }
+            }
         }
 
         // Ersten Administrator anlegen, solange es noch keinen Benutzer gibt (Hosting ohne SSH)
@@ -40,6 +61,6 @@ class DeployController
             $output[] = "Erster Administrator {$email} angelegt. Bitte ANLIEGO_INITIAL_ADMIN_PASSWORD jetzt aus der .env entfernen.";
         }
 
-        return response(implode("\n\n", $output)."\n", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+        return response(implode("\n\n", $output)."\n", $migrated ? 200 : 500, ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 }

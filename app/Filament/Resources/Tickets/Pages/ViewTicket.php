@@ -24,6 +24,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 /**
  * @property Ticket $record
@@ -91,12 +92,19 @@ class ViewTicket extends ViewRecord
                 Select::make('status_id')->label('Status danach')->options(fn () => self::statusOptions())
                     ->default(fn () => TicketStatus::system(TicketStatus::WAITING)->getKey())->required(),
             ])
-            ->action(function (array $data) {
-                $message = app(ReplySender::class)->reply(
-                    $this->record, auth()->user(), $data['body'], $data['cc'] ?? [],
-                    $this->storeUploads($data['files'] ?? []),
-                    TicketStatus::query()->findOrFail($data['status_id']),
-                );
+            ->action(function (array $data, Action $action) {
+                try {
+                    $message = app(ReplySender::class)->reply(
+                        $this->record, auth()->user(), $data['body'], $data['cc'] ?? [],
+                        $this->storeUploads($data['files'] ?? []),
+                        TicketStatus::query()->findOrFail($data['status_id']),
+                    );
+                } catch (Throwable $e) {
+                    report($e);
+                    Notification::make()->danger()->title('Antwort nicht gesendet')
+                        ->body($e->getMessage())->persistent()->send();
+                    $action->halt(); // Fenster bleibt offen, der Text geht nicht verloren
+                }
 
                 $message->delivery_status === 'sent'
                     ? Notification::make()->success()->title('Antwort gesendet')->send()

@@ -21,6 +21,9 @@ class MailboxTransportFactory
             $transport->setAutoTls(false);
         }
 
+        // Nicht hängen bleiben: Ohne Grenze wartet PHP bis zu 60 s, das Webhosting bricht vorher ab
+        $transport->getStream()->setTimeout(15);
+
         $transport->setUsername((string) $mailbox->smtp_username);
         $transport->setPassword((string) $mailbox->smtp_password);
 

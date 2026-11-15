@@ -1,9 +1,10 @@
-<IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
+# Kein "Options …" hier: Viele Webhoster (u. a. IONOS) erlauben das in .htaccess nicht und
+# antworten sonst mit "500 Internal Server Error".
+DirectoryIndex index.php
 
+<IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

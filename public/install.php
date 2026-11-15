@@ -7,6 +7,15 @@
 
 declare(strict_types=1);
 
+// Vor allem anderen: zu alte PHP-Version verständlich melden (sonst nur "500 Internal Server Error")
+if (PHP_VERSION_ID < 80200) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Anliego braucht PHP 8.2 oder neuer (empfohlen 8.4). Auf diesem Webspace läuft PHP '.PHP_VERSION.".\n"
+        .'IONOS: Hosting → PHP-Einstellungen → Version für diesen Webspace auf 8.4 stellen.';
+    exit;
+}
+
 use App\Install\Installer;
 
 $base = dirname(__DIR__);

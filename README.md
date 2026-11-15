@@ -18,6 +18,8 @@ Phase 1b (Ticket-API): API-Schlüssel je Mandant, Tickets aus Anwendungen mit An
 
 Phase 2a (Benachrichtigungen): Eingangsbestätigung an Kunden je Postfach (mit Schutz vor Schleifen und noreply-Absendern), Hinweise an Mitarbeiter bei neuem Ticket, Zuweisung und Kundenantwort in der Oberfläche und nach Wunsch per E-Mail.
 
+Ersteinrichtung im Browser: Installationsassistent `install.php` (Zugangscode, Datenbank, Administrator, erster Mandant, Systemmails; schreibt die `.env` und ist danach gesperrt), siehe docs/betrieb-ionos.md.
+
 Phase 2b (Fristen/SLA): Richtlinien je Mandant (optional nur für ein Team oder einen Eingang) mit Zielen je Priorität für Erstreaktion, Folgereaktion und Lösung. Gerechnet wird in Geschäftszeiten (je Wochentag, gesetzliche Feiertage je Bundesland, eigene freie Tage) oder rund um die Uhr. „Wartet“ pausiert die Lösungszeit, eine Prioritätsänderung berechnet die Ziele neu. `anliego:sla-check` (jede Minute über den Scheduler) warnt den Bearbeiter bei 75 % (einstellbar) und meldet Überschreitungen zusätzlich den Supervisoren. Fristen stehen in der Ticketliste (Spalte und Filter „Frist“) und in der Ticketansicht.
 
 Als Nächstes: SLAs und Erinnerungen, Webhooks, „Problem melden“ in der Mitgliederverwaltung.

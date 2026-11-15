@@ -1,6 +1,6 @@
 # Anliego auf IONOS-Webhosting einrichten
 
-Diese Anleitung beschreibt die Ersteinrichtung auf einem IONOS-Webhosting-Paket mit eigener Subdomain. Danach lädt GitHub jede neue Version automatisch hoch.
+Diese Anleitung beschreibt die Ersteinrichtung auf einem IONOS-Webhosting-Paket mit eigener Subdomain. Die Zugangsdaten trägst du dabei in einem Einrichtungsassistenten im Browser ein. Danach lädt GitHub jede neue Version automatisch hoch.
 
 Voraussetzungen: IONOS-Webhosting mit PHP 8.4, MariaDB/MySQL-Datenbank, SFTP-Zugang und Cronjobs.
 
@@ -32,17 +32,9 @@ IONOS → *Hosting* → *Datenbanken* → *Datenbank anlegen* (MariaDB/MySQL). N
 
 IONOS → *Hosting* → *SFTP & SSH* → Benutzer anlegen. Notiere Server (z. B. `access-….webspace-host.com`), Benutzer und Passwort.
 
-## 4. `.env` auf dem Server anlegen
+## 4. GitHub einrichten
 
-1. Vorlage [`.env.production.example`](../.env.production.example) kopieren und ausfüllen:
-   - `APP_KEY`: lokal erzeugen mit `php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;"`
-   - `APP_URL`: `https://tickets.deine-domain.de`
-   - Datenbankdaten aus Schritt 1
-   - `ANLIEGO_DEPLOY_TOKEN`: lange Zufallszeichenfolge, z. B. `php -r "echo bin2hex(random_bytes(32)).PHP_EOL;"`
-   - `ANLIEGO_INITIAL_ADMIN_EMAIL` und `ANLIEGO_INITIAL_ADMIN_PASSWORD` (mind. 12 Zeichen) für deinen ersten Zugang
-2. Die Datei als `.env` per SFTP in den Ordner `/anliego/` hochladen (nicht in `public/`).
-
-## 5. GitHub einrichten
+Einen langen Zufallswert als **Deploy-Token** ausdenken oder erzeugen, z. B. mit einem Passwortgenerator (mindestens 32 Zeichen) oder `php -r "echo bin2hex(random_bytes(32)).PHP_EOL;"`. Er dient später als Zugangscode für den Installationsassistenten.
 
 Im Repository → *Settings* → *Secrets and variables* → *Actions*:
 
@@ -52,19 +44,37 @@ Im Repository → *Settings* → *Secrets and variables* → *Actions*:
 | Secret | `IONOS_SFTP_USER` | SFTP-Benutzer |
 | Secret | `IONOS_SFTP_PASSWORD` | SFTP-Passwort |
 | Secret | `IONOS_TARGET_DIR` | Pfad des Ordners, z. B. `/anliego` |
-| Secret | `ANLIEGO_DEPLOY_TOKEN` | derselbe Wert wie in der `.env` |
+| Secret | `ANLIEGO_DEPLOY_TOKEN` | der Deploy-Token |
 | Variable | `ANLIEGO_URL` | `https://tickets.deine-domain.de` |
 | Variable | `DEPLOY_ON_PUSH` | `true`, wenn jede Änderung auf `claude/ticketsystem/main` automatisch live gehen soll (sonst weglassen) |
 
 Unter *Settings* → *Environments* wird die Umgebung `production` beim ersten Lauf automatisch angelegt. Dort lässt sich auf Wunsch eine Freigabe vor jedem Deploy einstellen.
 
-## 6. Erstes Deployment
+## 5. Hochladen
 
 GitHub → *Actions* → *Deploy auf IONOS* → *Run workflow*.
 
-Der Workflow installiert die Abhängigkeiten, lädt alles per SFTP hoch und ruft danach `POST /_deploy/migrate` auf. Dabei werden die Datenbanktabellen angelegt und – beim ersten Mal – dein Administrator-Zugang aus der `.env`.
+Der Workflow installiert die Abhängigkeiten und lädt alles per SFTP hoch. Beim ersten Mal endet er mit dem Hinweis „Anliego noch nicht eingerichtet“. Das ist richtig so.
 
-**Danach:** `ANLIEGO_INITIAL_ADMIN_PASSWORD` aus der `.env` auf dem Server löschen.
+## 6. Einrichtungsassistent
+
+`https://tickets.deine-domain.de` im Browser öffnen. Solange Anliego nicht eingerichtet ist, erscheint der Assistent (`/install.php`):
+
+1. **Voraussetzungen** werden geprüft (PHP-Version, Erweiterungen, Schreibrechte).
+2. **Zugangscode:** der Deploy-Token aus Schritt 4. Ohne ihn kann niemand sonst die Einrichtung starten.
+3. **Datenbank** aus Schritt 1 eintragen. Der Assistent prüft die Verbindung und meldet z. B. ein falsches Passwort verständlich.
+4. **Administrator-Zugang** (Name, E-Mail, Passwort mit mindestens 12 Zeichen), optional der **erste Mandant** und der **E-Mail-Versand** für Systemmails.
+5. *Anliego einrichten*: Die Tabellen und Grunddaten (Status) werden angelegt, der Administrator eingerichtet und zum Schluss die `.env` mit einem neuen `APP_KEY` gespeichert (Rechte 600).
+
+Danach ist der Assistent gesperrt. Ab dem nächsten Upload führt der Workflow die Datenbank-Änderungen automatisch aus.
+
+Konnte die `.env` nicht gespeichert werden, zeigt der Assistent ihren Inhalt an. Dann diesen Text als Datei `.env` per SFTP in den Ordner `/anliego/` hochladen (nicht in `public/`).
+
+**Ohne GitHub** (Dateien per SFTP selbst hochgeladen, inklusive `vendor/`): Der Assistent legt beim ersten Aufruf einen Zugangscode in `storage/install-code.txt` ab. Die Datei per SFTP oder im IONOS-Dateimanager öffnen. Den Deploy-Token zeigt der Assistent am Ende an, für den Fall, dass später doch über GitHub aktualisiert wird.
+
+**Neu einrichten:** `.env` per SFTP löschen oder umbenennen, dann öffnet sich der Assistent wieder. Die Daten in der Datenbank bleiben erhalten; der Administrator wird anhand der E-Mail-Adresse aktualisiert.
+
+Die frühere Einrichtung mit einer selbst geschriebenen `.env` (Vorlage [`.env.production.example`](../.env.production.example)) funktioniert weiterhin.
 
 ## 7. Cronjob einrichten
 
@@ -83,6 +93,7 @@ Die Übersicht in Anliego zeigt unter **Cronjob**, wann er zuletzt gelaufen ist.
 1. `https://tickets.deine-domain.de` öffnen und mit dem Administrator-Zugang anmelden.
 2. Die Zwei-Faktor-Anmeldung mit einer Authenticator-App (z. B. Microsoft Authenticator, Google Authenticator, 2FAS) einrichten. Sie ist für alle Mitarbeiter Pflicht. Die Wiederherstellungscodes sicher aufbewahren.
 3. Unter *Verwaltung* Mandanten, Mitarbeiter und Teams anlegen. Unter *Status* und *Kategorien* die Status (mit „schließt das Ticket ja/nein“) und Ticketkategorien nach Bedarf anpassen.
+4. Unter *Fristen (SLA)* je Mandant eine Richtlinie mit Geschäftszeiten und Feiertagen anlegen (optional).
 
 ## 9. Postfächer anbinden
 

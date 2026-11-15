@@ -26,3 +26,7 @@ Thumbs.db
 /public/css/filament
 /public/fonts/filament
 /database/database.sqlite
+
+# Installationsassistent
+/bootstrap/install.hash
+/storage/install-code.txt

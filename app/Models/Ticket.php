@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\TicketPriority;
 use App\Enums\StatusBehaviour;
+use App\Enums\TicketPriority;
+use App\Sla\SlaClock;
 use App\Support\TicketNumber;
 use App\Tenancy\BelongsToTenant;
 use App\Tickets\TicketNotifier;
@@ -35,6 +36,10 @@ class Ticket extends Model
             'last_agent_message_at' => 'datetime',
             'first_response_at' => 'datetime',
             'closed_at' => 'datetime',
+            'sla' => 'array',
+            'sla_due_at' => 'datetime',
+            'sla_next_check_at' => 'datetime',
+            'sla_breached' => 'boolean',
         ];
     }
 
@@ -44,7 +49,11 @@ class Ticket extends Model
         static::creating(function (Ticket $ticket) {
             $ticket->number ??= TicketNumber::next();
             $ticket->status_id ??= TicketStatus::system(TicketStatus::NEW)->getKey();
+            app(SlaClock::class)->creating($ticket);
         });
+
+        // Fristen (SLA) bei jeder relevanten Änderung nachführen
+        static::updating(fn (Ticket $ticket) => app(SlaClock::class)->updating($ticket));
     }
 
     // ---------------------------------------------------------------- Beziehungen
@@ -77,6 +86,11 @@ class Ticket extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function slaPolicy(): BelongsTo
+    {
+        return $this->belongsTo(SlaPolicy::class);
     }
 
     public function followUpOf(): BelongsTo

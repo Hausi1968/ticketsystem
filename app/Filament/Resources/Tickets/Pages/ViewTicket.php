@@ -46,7 +46,7 @@ class ViewTicket extends ViewRecord
     {
         return $schema->components([
             View::make('tickets.conversation')->viewData(fn () => [
-                'ticket' => $this->record->fresh(['tenant', 'status', 'category', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf',
+                'ticket' => $this->record->fresh(['tenant', 'status', 'category', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf', 'slaPolicy',
                     'messages.attachments', 'messages.user', 'events.user']),
             ]),
         ]);

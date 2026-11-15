@@ -50,6 +50,8 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         'new_ticket' => 'Neues Ticket in meinen Mandanten bzw. Teams',
         'assigned' => 'Mir wurde ein Ticket zugewiesen',
         'customer_reply' => 'Kunde hat auf mein Ticket geantwortet',
+        'sla_warning' => 'Frist (SLA) eines Tickets läuft bald ab',
+        'sla_breach' => 'Frist (SLA) eines Tickets ist überschritten',
     ];
 
     public function wantsMailFor(string $event): bool

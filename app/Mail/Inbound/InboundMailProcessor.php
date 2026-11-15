@@ -2,6 +2,8 @@
 
 namespace App\Mail\Inbound;
 
+use App\Mail\Outbound\AcknowledgementSender;
+use App\Tickets\TicketNotifier;
 use App\Enums\MessageType;
 use App\Enums\StatusBehaviour;
 use App\Models\TicketStatus;
@@ -45,6 +47,8 @@ class InboundMailProcessor
         private readonly EmailParser $parser,
         private readonly LoopDetector $loopDetector,
         private readonly TenantContext $tenancy,
+        private readonly TicketNotifier $notifier,
+        private readonly AcknowledgementSender $acknowledgement,
     ) {}
 
     public function process(Mailbox $mailbox, string $raw): MailReceipt
@@ -88,6 +92,13 @@ class InboundMailProcessor
             return DB::transaction(function () use ($mailbox, $email, $hash, $rawPath) {
                 [$ticket, $outcome] = $this->resolveTicket($mailbox, $email);
                 $this->appendMessage($ticket, $email, $rawPath);
+
+                if (in_array($outcome, [self::CREATED, self::FOLLOW_UP], true)) {
+                    $this->notifier->ticketCreated($ticket);
+                    $this->acknowledgement->queueFor($ticket, $email);
+                } else {
+                    $this->notifier->customerReplied($ticket);
+                }
 
                 return $this->receipt($mailbox, $hash, $email, $ticket, $outcome, rawPath: $rawPath);
             });

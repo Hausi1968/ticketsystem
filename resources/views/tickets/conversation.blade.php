@@ -18,6 +18,7 @@
     .anl-msg { border-radius: .75rem; border: 1px solid rgb(226 232 240); background: #fff; padding: 1rem 1.25rem; }
     .dark .anl-msg { background: rgb(15 23 42); border-color: rgb(51 65 85); }
     .anl-msg.reply { border-left: 4px solid #4f46e5; }
+    .anl-msg.auto { border-left: 4px solid rgb(148 163 184); opacity: .85; }
     .anl-msg.note { background: #fffbeb; border-color: #fcd34d; }
     .dark .anl-msg.note { background: rgb(69 26 3 / .4); border-color: rgb(180 83 9); }
     .anl-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; justify-content: space-between; margin-bottom: .5rem; font-size: .875rem; }
@@ -53,7 +54,7 @@
             @else
                 @php
                     $m = $row['item'];
-                    $class = match ($m->type) { MessageType::Reply => 'reply', MessageType::Note => 'note', default => 'customer' };
+                    $class = match ($m->type) { MessageType::Reply => 'reply', MessageType::Note => 'note', MessageType::Auto => 'auto', default => 'customer' };
                     $full = (string) $m->body_text;
                     $short = $m->type === MessageType::Customer ? QuoteStripper::strip($full) : $full;
                     $html = $m->body_html;
@@ -75,10 +76,13 @@
                             @if ($m->type === MessageType::Note)
                                 <x-filament::badge color="warning" size="sm" style="display:inline-flex">Interne Notiz</x-filament::badge>
                             @endif
+                            @if ($m->type === MessageType::Auto)
+                                <x-filament::badge color="gray" size="sm" style="display:inline-flex">Automatische Eingangsbestätigung</x-filament::badge>
+                            @endif
                         </div>
                         <div class="anl-meta">
                             {{ $m->created_at?->timezone($tz)->format('d.m.Y H:i') }}
-                            @if ($m->type === MessageType::Reply)
+                            @if (in_array($m->type, [MessageType::Reply, MessageType::Auto], true))
                                 ·
                                 @switch($m->delivery_status)
                                     @case('sent') <span style="color:#16a34a">gesendet</span> @break

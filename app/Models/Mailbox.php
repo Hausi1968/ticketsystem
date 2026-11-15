@@ -15,14 +15,14 @@ class Mailbox extends Model
     protected $attributes = [
         'imap_port' => 993, 'imap_encryption' => 'ssl', 'imap_folder' => 'INBOX',
         'smtp_port' => 465, 'smtp_encryption' => 'ssl',
-        'poll_interval_minutes' => 5, 'active' => true,
+        'poll_interval_minutes' => 5, 'active' => true, 'send_acknowledgement' => false,
     ];
 
     protected $fillable = [
         'tenant_id', 'team_id', 'name', 'email', 'from_name',
         'imap_host', 'imap_port', 'imap_encryption', 'imap_username', 'imap_password', 'imap_folder', 'processed_folder',
         'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password',
-        'poll_interval_minutes', 'active',
+        'poll_interval_minutes', 'active', 'send_acknowledgement', 'acknowledgement_text',
     ];
 
     protected $hidden = ['imap_password', 'smtp_password'];
@@ -33,6 +33,7 @@ class Mailbox extends Model
             'imap_password' => 'encrypted',
             'smtp_password' => 'encrypted',
             'active' => 'boolean',
+            'send_acknowledgement' => 'boolean',
             'last_polled_at' => 'datetime',
             'last_success_at' => 'datetime',
         ];

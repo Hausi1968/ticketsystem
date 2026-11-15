@@ -6,6 +6,7 @@ use App\Enums\TicketPriority;
 use App\Enums\StatusBehaviour;
 use App\Support\TicketNumber;
 use App\Tenancy\BelongsToTenant;
+use App\Tickets\TicketNotifier;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -169,6 +170,10 @@ class Ticket extends Model
 
         $this->save();
         $this->logEvent('assigned', $actor, ['from' => $previous, 'to' => $user?->getKey()]);
+
+        if ($user) {
+            app(TicketNotifier::class)->assigned($this, $user, $actor);
+        }
     }
 
     public function changeStatus(TicketStatus|string $status, ?User $actor = null): void

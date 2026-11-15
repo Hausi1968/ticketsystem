@@ -5,6 +5,12 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+if (PHP_VERSION_ID < 80200) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Anliego braucht PHP 8.2 oder neuer (empfohlen 8.4). Auf diesem Webspace läuft PHP '.PHP_VERSION.'. IONOS: Hosting → PHP-Einstellungen.');
+}
+
 // Noch nicht eingerichtet: zum Installationsassistenten
 if (! file_exists(__DIR__.'/../.env') && file_exists(__DIR__.'/install.php')) {
     header('Location: install.php', true, 302);

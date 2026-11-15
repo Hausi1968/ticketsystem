@@ -123,6 +123,19 @@ Kurzform plus `messages`: die Meldung des Nutzers und die Antworten des Teams, j
 (`customer` / `reply`), `author`, `body`, `created_at` und `attachments` (Dateiname, Größe).
 **Interne Notizen und die technischen Details werden nie ausgeliefert.**
 
+### Antworten
+
+`POST /tickets/MUS-1000/messages`
+
+```json
+{ "body": "Es ist der Familienbeitrag.", "reporter": { "external_user_id": "u_4711" }, "attachment_ids": [] }
+```
+
+- Antworten darf nur, wer das Ticket angelegt hat (`external_user_id` oder `email`) oder per CC beteiligt ist, sonst `403`.
+- Wirkt wie eine Antwort per E-Mail: Ein wartendes oder erledigtes Ticket wird wieder offen, der Bearbeiter bekommt einen Hinweis.
+- Ist beim erledigten Status „Kundenantwort → neues Ticket“ eingestellt, entsteht ein **Folgeticket**.
+  Die Antwort (`201`) ist die Kurzform des Tickets, das die Nachricht bekommen hat, plus `"follow_up": true|false`.
+
 ## 6. Fehler
 
 Fehler kommen immer als JSON.
@@ -130,7 +143,7 @@ Fehler kommen immer als JSON.
 | Code | Bedeutung |
 |---|---|
 | 401 | Schlüssel fehlt, ist falsch oder widerrufen |
-| 403 | Mandant ist deaktiviert |
+| 403 | Mandant ist deaktiviert, oder die Antwort kommt nicht vom Ersteller des Tickets |
 | 404 | Ticket nicht gefunden (oder gehört zu einem anderen Mandanten) |
 | 422 | Eingaben ungültig, Details in `errors`, z. B. `{"errors": {"reporter.email": ["…"]}}` |
 | 429 | Mehr als 60 Anfragen pro Minute je Schlüssel; Header `Retry-After` beachten |

@@ -11,4 +11,5 @@ Route::prefix('v1')->middleware([AuthenticateApiKey::class, 'throttle:anliego-ap
     Route::post('tickets', [TicketController::class, 'store']);
     Route::get('tickets', [TicketController::class, 'index']);
     Route::get('tickets/{reference}', [TicketController::class, 'show']);
+    Route::post('tickets/{reference}/messages', [TicketController::class, 'reply']);
 });

@@ -8,6 +8,7 @@ use App\Enums\TicketPriority;
 use App\Models\ApiKey;
 use App\Models\Ticket;
 use App\Support\TicketNumber;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -96,6 +97,34 @@ class TicketController
         $ticket = Ticket::query()->with('status', 'category', 'tenant')->where('number', $number)->firstOrFail();
 
         return response()->json(TicketPresenter::full($ticket));
+    }
+
+    /** Antwort des Nutzers auf sein Ticket */
+    public function reply(Request $request, string $reference, ApiTicketService $service): JsonResponse
+    {
+        $number = TicketNumber::parse($reference) ?? abort(404);
+        $ticket = Ticket::query()->with('status', 'contact', 'category')->where('number', $number)->firstOrFail();
+
+        $data = $request->validate([
+            'body' => ['required', 'string', 'max:50000'],
+            'reporter' => ['required', 'array'],
+            'reporter.external_user_id' => ['required_without:reporter.email', 'nullable', 'string', 'max:191'],
+            'reporter.email' => ['required_without:reporter.external_user_id', 'nullable', 'email', 'max:191'],
+            'reporter.name' => ['nullable', 'string', 'max:191'],
+            'attachment_ids' => ['nullable', 'array', 'max:20'],
+            'attachment_ids.*' => ['string', 'max:40'],
+        ]);
+
+        try {
+            [$target, $created] = $service->reply($request->attributes->get('api_key'), $ticket, $data);
+        } catch (AuthorizationException $e) {
+            return response()->json(['error' => 'not_owner', 'message' => $e->getMessage()], 403);
+        }
+
+        return response()->json(
+            TicketPresenter::summary($target->fresh(['status', 'category', 'tenant'])) + ['follow_up' => $created],
+            201,
+        );
     }
 
     private function replay(ApiKey $key, ?string $idempotencyKey): ?Ticket

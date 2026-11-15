@@ -9,6 +9,7 @@ use App\Models\Contact;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
+use App\Models\TicketStatus;
 use App\Tenancy\TenantContext;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -181,4 +182,52 @@ it('räumt nicht verwendete Uploads nach einem Tag auf', function () {
     $this->artisan('anliego:cleanup')->assertSuccessful();
 
     expect(unscoped(fn () => ApiUpload::count()))->toBe(0);
+});
+
+it('nimmt Antworten des Nutzers auf sein Ticket an und öffnet es wieder', function () {
+    api($this->plain)->postJson('/api/v1/tickets', $this->payload)->assertCreated();
+    $ticket = unscoped(fn () => Ticket::sole());
+    $agent = memberOf($this->tenant);
+    app(TenantContext::class)->runFor($this->tenant, fn () => app(ReplySender::class)->reply($ticket, $agent, 'Welche Beitragsart?'));
+    expect(unscoped(fn () => $ticket->fresh()->status->system_key))->toBe(TicketStatus::WAITING);
+
+    api($this->plain)->postJson('/api/v1/tickets/TSV-1000/messages', [
+        'body' => 'Familienbeitrag.',
+        'reporter' => ['external_user_id' => 'u_4711'],
+    ])->assertCreated()->assertJsonPath('reference', 'TSV-1000')->assertJsonPath('follow_up', false);
+
+    $fresh = unscoped(fn () => $ticket->fresh());
+    expect($fresh->status->system_key)->toBe(TicketStatus::OPEN)
+        ->and(unscoped(fn () => $fresh->messages()->where('type', 'customer')->reorder()->latest('id')->value('body_text')))->toBe('Familienbeitrag.');
+
+    $detail = api($this->plain)->getJson('/api/v1/tickets/TSV-1000')->assertOk();
+    expect($detail->json('messages'))->toHaveCount(3);
+});
+
+it('lässt nur den Ersteller oder Beteiligte antworten', function () {
+    api($this->plain)->postJson('/api/v1/tickets', $this->payload)->assertCreated();
+
+    api($this->plain)->postJson('/api/v1/tickets/TSV-1000/messages', ['body' => 'Hallo', 'reporter' => ['external_user_id' => 'u_9999']])
+        ->assertForbidden();
+    api($this->plain)->postJson('/api/v1/tickets/TSV-1000/messages', ['body' => 'Hallo', 'reporter' => ['email' => 'fremd@x.de']])
+        ->assertForbidden();
+    api($this->otherPlain)->postJson('/api/v1/tickets/TSV-1000/messages', ['body' => 'Hallo', 'reporter' => ['external_user_id' => 'u_4711']])
+        ->assertNotFound();
+    api($this->plain)->postJson('/api/v1/tickets/TSV-1000/messages', ['body' => 'per Mail', 'reporter' => ['email' => 'jonas@mitglied.de']])
+        ->assertCreated();
+});
+
+it('legt bei Antwort auf ein geschlossenes Ticket ein Folgeticket an, wenn der Status es verlangt', function () {
+    api($this->plain)->postJson('/api/v1/tickets', $this->payload)->assertCreated();
+    $ticket = unscoped(fn () => Ticket::sole());
+    $closed = TicketStatus::system(TicketStatus::SOLVED);
+    $closed->update(['reply_creates_new_ticket' => true]);
+    app(TenantContext::class)->runFor($this->tenant, fn () => $ticket->changeStatus($closed));
+
+    api($this->plain)->postJson('/api/v1/tickets/TSV-1000/messages', ['body' => 'Nochmal kaputt', 'reporter' => ['external_user_id' => 'u_4711']])
+        ->assertCreated()->assertJsonPath('reference', 'TSV-1001')->assertJsonPath('follow_up', true);
+
+    $followUp = unscoped(fn () => Ticket::query()->where('number', 1001)->sole());
+    expect($followUp->follow_up_of_id)->toBe($ticket->id)
+        ->and($followUp->subject)->toBe($ticket->subject);
 });

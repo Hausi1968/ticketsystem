@@ -137,3 +137,16 @@ it('findet über die Nummer keine Tickets fremder Mandanten', function () {
 
     expect(\App\Filament\Resources\Tickets\TicketResource::getGlobalSearchResults('VB-1001'))->toHaveCount(0);
 });
+
+it('zeigt eine verständliche Meldung statt eines Serverfehlers, wenn die Antwort nicht gespeichert werden kann', function () {
+    $this->actingAs($this->agentA);
+    $this->mailboxA->forceFill(['active' => false])->saveQuietly();
+    app(TenantContext::class)->runFor($this->a, fn () => $this->ticketA->forceFill(['mailbox_id' => null])->saveQuietly());
+
+    Livewire::test(ViewTicket::class, ['record' => $this->ticketA->id])
+        ->callAction('reply', data: ['body' => 'Hallo', 'cc' => [], 'status_id' => TicketStatus::system(TicketStatus::WAITING)->id])
+        ->assertNotified('Antwort nicht gesendet');
+
+    expect($this->smtp->sent)->toBe([])
+        ->and($this->ticketA->messages()->where('type', 'reply')->count())->toBe(0);
+});

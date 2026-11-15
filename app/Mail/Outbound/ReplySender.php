@@ -189,7 +189,7 @@ class ReplySender
     {
         return $ticket->mailbox
             ?? Mailbox::query()->where('tenant_id', $ticket->tenant_id)->where('active', true)->orderBy('id')->first()
-            ?? throw new RuntimeException('Für diesen Mandanten ist kein Postfach eingerichtet.');
+            ?? throw new RuntimeException('Für diesen Mandanten ist kein aktives Postfach eingerichtet. Bitte unter Verwaltung → Postfächer eines anlegen, über das die Antworten verschickt werden.');
     }
 
     private function subjectFor(Ticket $ticket): string

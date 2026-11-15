@@ -11,7 +11,10 @@ use App\Models\ApiUpload;
 use App\Models\Contact;
 use App\Models\Mailbox;
 use App\Models\Ticket;
+use App\Enums\StatusBehaviour;
 use App\Models\TicketCategory;
+use App\Models\TicketStatus;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -64,6 +67,69 @@ class ApiTicketService
             $this->acknowledgement->queueFor($ticket);
 
             return $ticket;
+        });
+    }
+
+    /**
+     * Antwort des Nutzers auf sein Ticket, z. B. aus "Meine Meldungen". Wirkt wie eine Kunden-E-Mail:
+     * Wartet/geschlossen → wieder offen, Hinweis an den Bearbeiter. Ist beim geschlossenen Status
+     * "Kundenantwort → neues Ticket" eingestellt, entsteht ein Folgeticket.
+     *
+     * @param  array<string, mixed>  $data  bereits validiert
+     * @return array{0: Ticket, 1: bool} Ticket, das die Antwort bekommen hat, und ob es neu ist
+     */
+    public function reply(ApiKey $key, Ticket $ticket, array $data): array
+    {
+        $reporter = $data['reporter'];
+        $externalId = $reporter['external_user_id'] ?? null;
+        $email = isset($reporter['email']) ? mb_strtolower(trim($reporter['email'])) : null;
+
+        $owner = ($externalId !== null && $ticket->contact?->external_user_id === $externalId)
+            || ($email !== null && $ticket->acceptsRepliesFrom($email));
+        if (! $owner) {
+            throw new AuthorizationException('Dieses Ticket gehört nicht zu diesem Nutzer.');
+        }
+
+        $status = $ticket->status;
+        if ($status->closes() && $status->reply_creates_new_ticket) {
+            $followUp = $this->create($key, [
+                'subject' => $ticket->subject,
+                'description' => $data['body'],
+                'reporter' => $reporter + ['email' => $ticket->contact->email],
+                'attachment_ids' => $data['attachment_ids'] ?? [],
+            ] + ['category' => $ticket->category?->name]);
+            $followUp->forceFill(['follow_up_of_id' => $ticket->getKey(), 'priority' => $ticket->priority])->save();
+
+            return [$followUp, true];
+        }
+
+        return DB::transaction(function () use ($key, $ticket, $data, $status) {
+            $contact = $ticket->contact;
+            $uploads = $this->uploadsFor($key, $data['attachment_ids'] ?? []);
+
+            $message = $ticket->messages()->create([
+                'tenant_id' => $ticket->tenant_id,
+                'type' => MessageType::Customer,
+                'contact_id' => $contact->getKey(),
+                'from_email' => $contact->email,
+                'from_name' => $contact->name,
+                'subject' => 'Re: '.$ticket->subject,
+                'body_text' => $data['body'],
+            ]);
+
+            foreach ($uploads as $upload) {
+                $upload->attachTo($message);
+            }
+
+            $ticket->forceFill(['last_customer_message_at' => now()])->save();
+
+            if (in_array($status->behaviour, [StatusBehaviour::Closed, StatusBehaviour::Pending], true)) {
+                $ticket->changeStatus(TicketStatus::OPEN);
+            }
+
+            $this->notifier->customerReplied($ticket);
+
+            return [$ticket, false];
         });
     }
 

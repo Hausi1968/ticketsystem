@@ -101,6 +101,10 @@ class Installer
         $checks[] = ['label' => 'Programmdateien vollständig (vendor/)', 'ok' => is_file($this->basePath.'/vendor/autoload.php'),
             'hint' => 'Den Upload über GitHub (Deploy auf IONOS) erneut starten.'];
 
+        // Ohne diese Dateien öffnen sich Fenster und Schaltflächen der Oberfläche nicht (z. B. 2FA einrichten)
+        $checks[] = ['label' => 'Oberflächen-Dateien vollständig (public/js/filament)', 'ok' => is_file($this->basePath.'/public/js/filament/filament/app.js'),
+            'hint' => 'Die Ordner public/js, public/css und public/fonts aus dem Download vollständig hochladen.'];
+
         foreach (['' => 'Anwendungsordner (für die .env)', 'storage' => 'storage/', 'bootstrap/cache' => 'bootstrap/cache/'] as $dir => $label) {
             $checks[] = ['label' => "Schreibrechte {$label}", 'ok' => is_writable($this->basePath.($dir ? '/'.$dir : '')),
                 'hint' => 'Per SFTP die Rechte des Ordners auf 755 setzen.'];

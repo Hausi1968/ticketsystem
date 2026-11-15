@@ -47,6 +47,7 @@
                         'status' => "{$who}: Status ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'category' => "{$who}: Kategorie ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'priority' => "{$who}: Priorität → ".(\App\Enums\TicketPriority::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),
+                        'sla_breach' => 'Frist überschritten: '.(\App\Models\SlaPolicy::METRICS[$e->data['metric'] ?? ''] ?? 'SLA'),
                         default => "{$who}: {$e->type}",
                     };
                 @endphp
@@ -147,6 +148,20 @@
                 @endif
             </dl>
         </x-filament::section>
+
+        @php $slaRows = \App\Sla\SlaDisplay::rows($ticket); @endphp
+        @if ($slaRows !== [])
+            <x-filament::section>
+                <x-slot name="heading">Fristen (SLA)</x-slot>
+                <x-slot name="description">{{ $ticket->slaPolicy?->name }}{{ $ticket->slaPolicy?->all_day ? ' · rund um die Uhr' : ' · in Geschäftszeiten' }}</x-slot>
+                <dl class="anl-dl">
+                    @foreach ($slaRows as $row)
+                        <dt>{{ $row['label'] }}</dt>
+                        <dd style="color: {{ ['danger' => '#dc2626', 'warning' => '#d97706', 'success' => '#16a34a'][$row['color']] ?? 'inherit' }}; {{ $row['color'] !== 'gray' ? 'font-weight:600' : '' }}">{{ $row['text'] }}</dd>
+                    @endforeach
+                </dl>
+            </x-filament::section>
+        @endif
 
         @if (! empty($ticket->context))
             @php

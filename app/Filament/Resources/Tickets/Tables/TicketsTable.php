@@ -8,9 +8,9 @@ use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
+use App\Sla\SlaDisplay;
 use App\Support\BadgeColor;
 use App\Support\TicketNumber;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
@@ -18,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TicketsTable
 {
@@ -44,6 +45,12 @@ class TicketsTable
                     ->color(fn (Ticket $record) => BadgeColor::resolve($record->category?->color))
                     ->toggleable(),
                 TextColumn::make('priority')->label('Priorität')->badge()->sortable(),
+                TextColumn::make('sla_due_at')->label('Frist')->sortable()->badge()->placeholder('–')
+                    ->formatStateUsing(fn (Ticket $record) => SlaDisplay::short($record))
+                    ->color(fn (Ticket $record) => SlaDisplay::shortColor($record))
+                    ->icon(Heroicon::OutlinedClock)
+                    ->tooltip(fn (Ticket $record) => collect(SlaDisplay::rows($record))->map(fn ($r) => "{$r['label']}: {$r['text']}")->join("\n") ?: null)
+                    ->toggleable(),
                 TextColumn::make('assignee.name')->label('Bearbeiter')->placeholder('– niemand –'),
                 TextColumn::make('updated_at')->label('Aktualisiert')->since()->sortable()
                     ->tooltip(fn (Ticket $record) => $record->updated_at?->timezone('Europe/Berlin')->format('d.m.Y H:i')),
@@ -57,6 +64,14 @@ class TicketsTable
                 SelectFilter::make('priority')->label('Priorität')->options(TicketPriority::class),
                 SelectFilter::make('status_id')->label('Status')->multiple()
                     ->options(fn () => TicketStatus::query()->ordered()->pluck('name', 'id')),
+                SelectFilter::make('sla')->label('Frist (SLA)')
+                    ->options(['overdue' => 'überschritten', 'soon' => 'läuft bald ab', 'breached' => 'irgendwann überschritten'])
+                    ->query(fn (Builder $query, array $data) => match ($data['value'] ?? null) {
+                        'overdue' => $query->whereNotNull('sla_due_at')->where('sla_due_at', '<', now()),
+                        'soon' => $query->whereNotNull('sla_due_at')->where('sla_due_at', '>=', now())->where('sla_due_at', '<', now()->addHours(4)),
+                        'breached' => $query->where('sla_breached', true),
+                        default => $query,
+                    }),
                 SelectFilter::make('category_id')->label('Kategorie')->multiple()
                     ->options(fn () => TicketCategory::query()->with('tenant')->ordered()->get()
                         ->mapWithKeys(fn (TicketCategory $c) => [$c->id => $c->name.($c->tenant ? " ({$c->tenant->short_code})" : '')])),

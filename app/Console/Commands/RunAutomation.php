@@ -11,6 +11,7 @@ use App\Models\TicketStatus;
 use App\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Throwable;
 
 /**
@@ -139,7 +140,7 @@ class RunAutomation extends Command
             });
     }
 
-    /** @return \Illuminate\Support\Collection<int, Ticket> */
+    /** @return Collection<int, Ticket> */
     private function waitingTickets(CarbonInterface $cutoff)
     {
         return Ticket::query()->with(['status', 'contact', 'tenant', 'mailbox'])

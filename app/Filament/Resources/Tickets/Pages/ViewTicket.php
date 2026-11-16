@@ -11,8 +11,11 @@ use App\Models\CannedResponse;
 use App\Models\CustomField;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
+use App\Models\TicketMessage;
+use App\Models\TicketPresence;
 use App\Models\TicketStatus;
 use App\Models\User;
+use App\Tickets\Presence;
 use App\Tickets\TicketMerger;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -41,6 +44,59 @@ class ViewTicket extends ViewRecord
 {
     protected static string $resource = TicketResource::class;
 
+    /** Letzte Nachricht, die dieser Mitarbeiter gesehen hat – für die Warnung vor doppelter Antwort */
+    public ?int $seenMessageId = null;
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+        $this->seenMessageId = $this->latestMessageId();
+        app(Presence::class)->touch($this->record, auth()->user());
+    }
+
+    /** Wird von der Ansicht alle 10 Sekunden aufgerufen; aktualisiert Anwesenheit und Verlauf. */
+    public function heartbeat(): void
+    {
+        $writing = collect($this->mountedActions ?? [])->contains(fn ($a) => in_array($a['name'] ?? null, ['reply', 'note'], true));
+        app(Presence::class)->touch($this->record, auth()->user(), $writing ? TicketPresence::WRITING : TicketPresence::VIEWING);
+
+        // Ohne offenes Antwortfenster sieht der Mitarbeiter neue Nachrichten direkt im Verlauf
+        if (! $writing) {
+            $this->seenMessageId = $this->latestMessageId();
+        }
+    }
+
+    private function latestMessageId(): ?int
+    {
+        return $this->record->messages()->reorder()->max('id');
+    }
+
+    /**
+     * Ist seit dem Öffnen eine neue Nachricht (Kunde oder Kollege) eingegangen, wird einmal gewarnt
+     * und abgebrochen. Ein zweites „Senden“ schickt die Antwort dann ab.
+     */
+    private function guardAgainstNewMessages(Action $action): void
+    {
+        $new = $this->record->messages()->reorder()->with('user')
+            ->when($this->seenMessageId, fn ($query) => $query->where('id', '>', $this->seenMessageId))
+            ->where(fn ($query) => $query->whereNull('user_id')->orWhere('user_id', '!=', auth()->id()))
+            ->latest('id')->get();
+
+        $this->seenMessageId = $this->latestMessageId();
+
+        if ($new->isEmpty()) {
+            return;
+        }
+
+        $who = $new->map(fn (TicketMessage $m) => $m->user?->name ?? ($m->from_name ?: $m->from_email))->filter()->unique()->join(', ');
+        Notification::make()->warning()->persistent()
+            ->title($new->count() === 1 ? 'Neue Nachricht seit dem Öffnen' : $new->count().' neue Nachrichten seit dem Öffnen')
+            ->body("Von {$who}. Bitte den Verlauf prüfen. Erneut auf „Senden“ klicken, um trotzdem abzuschicken.")
+            ->send();
+        $this->refreshRecord();
+        $action->halt();
+    }
+
     public function getTitle(): string|Htmlable
     {
         return $this->record->subject;
@@ -57,6 +113,9 @@ class ViewTicket extends ViewRecord
     public function content(Schema $schema): Schema
     {
         return $schema->components([
+            View::make('tickets.presence')->viewData(fn () => [
+                'others' => app(Presence::class)->others($this->record, auth()->user()),
+            ]),
             View::make('tickets.conversation')->viewData(fn () => [
                 'ticket' => $this->record->fresh(['tenant', 'status', 'category', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf', 'slaPolicy',
                     'messages.attachments', 'messages.user', 'events.user']),
@@ -121,7 +180,10 @@ class ViewTicket extends ViewRecord
                 Select::make('status_id')->label('Status danach')->options(fn () => self::statusOptions())
                     ->default(fn () => TicketStatus::system(TicketStatus::WAITING)->getKey())->required(),
             ])
+            ->beforeFormFilled(fn () => app(Presence::class)->touch($this->record, auth()->user(), TicketPresence::WRITING))
             ->action(function (array $data, Action $action) {
+                $this->guardAgainstNewMessages($action);
+
                 try {
                     $message = app(ReplySender::class)->reply(
                         $this->record, auth()->user(), $data['body'], $data['cc'] ?? [],
@@ -343,5 +405,7 @@ class ViewTicket extends ViewRecord
     private function refreshRecord(): void
     {
         $this->record->refresh();
+        $this->seenMessageId = max((int) $this->seenMessageId, (int) $this->latestMessageId()) ?: null;
+        app(Presence::class)->touch($this->record, auth()->user());
     }
 }

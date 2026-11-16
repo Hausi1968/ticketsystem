@@ -18,6 +18,12 @@ it('lässt aktive Mitarbeiter auf die Übersicht', function () {
     $this->actingAs(User::factory()->create())->get('/')->assertOk();
 });
 
+it('verlinkt das Benutzerhandbuch als PDF', function () {
+    expect(public_path('handbuch.pdf'))->toBeFile();
+    $this->actingAs(User::factory()->create())->get('/')->assertOk()
+        ->assertSee('Handbuch')->assertSee('handbuch.pdf?v=', false);
+});
+
 it('sperrt inaktive Mitarbeiter aus', function () {
     $this->actingAs(User::factory()->create(['active' => false]))->get('/')->assertForbidden();
 });

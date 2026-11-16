@@ -46,12 +46,14 @@
                             : "{$who} hat die Zuweisung entfernt",
                         'status' => "{$who}: Status ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–')
                             .(isset($e->data['auto']) ? " (automatisch nach {$e->data['auto']} Tagen)" : '')
-                            .(isset($e->data['merged']) ? ' (zusammengeführt)' : ''),
+                            .(isset($e->data['merged']) ? ' (zusammengeführt)' : '')
+                            .(isset($e->data['note']) ? " ({$e->data['note']})" : ''),
                         'reminder' => 'Erinnerung an den Kunden verschickt',
                         'fields' => "{$who}: ".collect($e->data['changes'] ?? [])->map(fn ($v, $k) => "{$k} → {$v}")->implode(', '),
                         'rule' => 'Regel „'.($e->data['rule'] ?? '–').'“ angewendet'.(isset($e->data['team']) ? ' · Team → '.$e->data['team'] : ''),
                         'merged_into' => "{$who} hat dieses Ticket in ".($e->data['ticket'] ?? '–').' zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) verschoben)',
                         'merged_from' => "{$who} hat ".($e->data['ticket'] ?? '–').' hierher zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) übernommen)',
+                        'sender_blocked' => "{$who} hat ".($e->data['entry'] ?? 'den Absender').' für dieses Postfach gesperrt',
                         'anonymized' => "{$who}: Kontaktdaten auf Wunsch gelöscht (Datenschutz)",
                         'category' => "{$who}: Kategorie ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'priority' => "{$who}: Priorität → ".(\App\Enums\TicketPriority::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),

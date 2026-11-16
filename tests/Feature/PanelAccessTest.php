@@ -2,8 +2,8 @@
 
 use App\Enums\MembershipRole;
 use App\Models\Tenant;
-use App\Support\TicketNumber;
 use App\Models\User;
+use App\Support\TicketNumber;
 use Illuminate\Support\Facades\Artisan;
 
 it('leitet nicht angemeldete Besucher zur Anmeldung', function () {

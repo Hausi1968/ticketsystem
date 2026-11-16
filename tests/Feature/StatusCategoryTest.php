@@ -2,16 +2,15 @@
 
 use App\Enums\StatusBehaviour;
 use App\Filament\Resources\TicketCategories\Pages\ManageTicketCategories;
-use App\Filament\Resources\TicketStatuses\Pages\ManageTicketStatuses;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
+use App\Filament\Resources\TicketStatuses\Pages\ManageTicketStatuses;
 use App\Mail\Inbound\InboundMailProcessor;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
 use App\Models\User;
-use App\Tenancy\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;

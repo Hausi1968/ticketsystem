@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\Tables;
 
 use App\Enums\TicketPriority;
+use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Models\CustomField;
 use App\Models\Team;
 use App\Models\Tenant;
@@ -13,7 +14,6 @@ use App\Models\User;
 use App\Sla\SlaDisplay;
 use App\Support\BadgeColor;
 use App\Support\TicketNumber;
-use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Tickets\BulkEditor;
 use App\Tickets\TicketSearch;
 use Filament\Actions\Action;

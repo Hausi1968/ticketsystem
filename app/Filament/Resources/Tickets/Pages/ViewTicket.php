@@ -21,10 +21,12 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Utilities\Get;
@@ -137,6 +139,7 @@ class ViewTicket extends ViewRecord
                 $this->timeAction(),
                 $this->fieldsAction(),
                 $this->mergeAction(),
+                $this->blockSenderAction(),
             ])->label('Bearbeiten')->button()->color('gray')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
         ];
     }
@@ -363,6 +366,36 @@ class ViewTicket extends ViewRecord
 
                 Notification::make()->success()->title('Zusammengeführt in '.$target->reference())->send();
                 $this->redirect(TicketResource::getUrl('view', ['record' => $target]));
+            });
+    }
+
+    private function blockSenderAction(): Action
+    {
+        return Action::make('blockSender')->label('Absender sperren')->icon(Heroicon::OutlinedNoSymbol)->color('danger')
+            ->visible(fn () => $this->record->mailbox_id && $this->record->contact
+                && (auth()->user()->is_admin || auth()->user()->roleIn($this->record->tenant_id) === MembershipRole::Supervisor))
+            ->modalHeading('Absender sperren')
+            ->modalDescription(fn () => 'Aus E-Mails dieses Absenders an „'.$this->record->mailbox?->email.'“ entstehen keine Tickets mehr. Die Liste lässt sich unter Verwaltung → Postfächer bearbeiten.')
+            ->schema([
+                Radio::make('scope')->label('Sperren')->required()->default('address')
+                    ->options(fn () => [
+                        'address' => $this->record->contact->email,
+                        'domain' => 'alle Absender von @'.Str::after($this->record->contact->email, '@'),
+                    ]),
+                Toggle::make('solve')->label('Ticket als gelöst markieren')->default(true),
+            ])
+            ->action(function (array $data) {
+                $email = mb_strtolower($this->record->contact->email);
+                $entry = $data['scope'] === 'domain' ? '@'.Str::after($email, '@') : $email;
+                $this->record->mailbox->blockSender($entry);
+
+                if ($data['solve'] ?? false) {
+                    $this->record->changeStatus(TicketStatus::SOLVED, auth()->user(), ['note' => 'Absender gesperrt']);
+                }
+                $this->record->logEvent('sender_blocked', auth()->user(), ['entry' => $entry]);
+
+                Notification::make()->success()->title("{$entry} gesperrt")->send();
+                $this->refreshRecord();
             });
     }
 

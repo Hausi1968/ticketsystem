@@ -17,6 +17,10 @@ class LoopDetector
 
     public const OWN = 'ignored_own';
 
+    public const BLOCKED = 'ignored_blocked';
+
+    public const NEWSLETTER = 'ignored_newsletter';
+
     public function classify(ParsedEmail $email, Mailbox $mailbox): ?string
     {
         $from = (string) $email->fromEmail;
@@ -33,11 +37,27 @@ class LoopDetector
             return self::OWN;
         }
 
+        if ($mailbox->blocksSender($from)) {
+            return self::BLOCKED;
+        }
+
         if ($this->isAutomatic($email, $from)) {
             return self::LOOP;
         }
 
+        if ($mailbox->ignore_newsletters && $this->isNewsletter($email)) {
+            return self::NEWSLETTER;
+        }
+
         return null;
+    }
+
+    /** Newsletter und Massen-Mails (nur wenn im Postfach eingeschaltet – Webshop-Bestellungen sehen manchmal ähnlich aus) */
+    private function isNewsletter(ParsedEmail $email): bool
+    {
+        return $email->header('list-unsubscribe') !== null
+            || $email->header('list-id') !== null
+            || in_array(strtolower(trim((string) $email->header('precedence'))), ['bulk', 'list', 'junk'], true);
     }
 
     private function isBounce(ParsedEmail $email, string $from): bool

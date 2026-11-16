@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\MembershipRole;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\User;

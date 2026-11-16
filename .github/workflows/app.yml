@@ -1,14 +1,11 @@
 # Android-App (mobile/) als APK über EAS bauen.
 # Braucht das Repository-Secret EXPO_TOKEN (expo.dev → Account settings → Access tokens;
 # GitHub → Settings → Secrets and variables → Actions → New repository secret).
-# Start: von Hand („Run workflow“) oder bei Änderungen unter mobile/ auf dem Arbeits-Branch.
+# Start nur von Hand („Run workflow“), damit keine Fehler-Mails bei jedem Push kommen.
 name: App bauen (APK)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [claude/project-thread-0isqn7]
-    paths: ['mobile/**', '.github/workflows/app.yml']
 
 concurrency:
   group: app-build

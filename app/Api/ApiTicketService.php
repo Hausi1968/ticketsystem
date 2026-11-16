@@ -3,6 +3,7 @@
 namespace App\Api;
 
 use App\Mail\Outbound\AcknowledgementSender;
+use App\Tickets\RuleEngine;
 use App\Tickets\TicketNotifier;
 use App\Enums\MessageType;
 use App\Enums\TicketPriority;
@@ -63,6 +64,7 @@ class ApiTicketService
 
             $ticket->logEvent('created', data: ['channel' => 'api', 'api_key' => $key->name]);
 
+            app(RuleEngine::class)->apply($ticket);
             $this->notifier->ticketCreated($ticket);
             $this->acknowledgement->queueFor($ticket);
 

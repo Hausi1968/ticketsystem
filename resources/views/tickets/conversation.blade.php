@@ -48,6 +48,7 @@
                             .(isset($e->data['auto']) ? " (automatisch nach {$e->data['auto']} Tagen)" : '')
                             .(isset($e->data['merged']) ? ' (zusammengeführt)' : ''),
                         'reminder' => 'Erinnerung an den Kunden verschickt',
+                        'rule' => 'Regel „'.($e->data['rule'] ?? '–').'“ angewendet'.(isset($e->data['team']) ? ' · Team → '.$e->data['team'] : ''),
                         'merged_into' => "{$who} hat dieses Ticket in ".($e->data['ticket'] ?? '–').' zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) verschoben)',
                         'merged_from' => "{$who} hat ".($e->data['ticket'] ?? '–').' hierher zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) übernommen)',
                         'anonymized' => "{$who}: Kontaktdaten auf Wunsch gelöscht (Datenschutz)",

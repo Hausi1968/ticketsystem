@@ -28,6 +28,7 @@ class ListTickets extends ListRecords
     public const BASE_TABS = [
         'mine' => 'Meine',
         'unassigned' => 'Unzugewiesen',
+        'teams' => 'Meine Teams',
         'open' => 'Alle offenen',
         'pending' => 'Wartend',
         'closed' => 'Geschlossen',
@@ -51,6 +52,9 @@ class ListTickets extends ListRecords
             'unassigned' => Tab::make('Unzugewiesen')
                 ->badge(fn () => Ticket::query()->whereNull('assignee_id')->unresolved()->count() ?: null)
                 ->badgeColor('warning'),
+            'teams' => Tab::make('Meine Teams')
+                ->badge(fn () => TicketTabs::apply(Ticket::query(), 'teams', auth()->user())->count() ?: null)
+                ->badgeColor('gray'),
             'open' => Tab::make('Alle offenen'),
             'pending' => Tab::make('Wartend'),
             'closed' => Tab::make('Geschlossen'),

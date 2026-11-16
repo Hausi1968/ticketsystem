@@ -62,6 +62,8 @@ export function eventText(e: TicketEvent, options: Options | null): string {
       return d.to ? `${who} hat das Ticket ${userName(d.to)} zugewiesen` : `${who} hat die Zuweisung entfernt`;
     case 'status':
       return `${who}: Status ${d.from ?? '–'} → ${d.to ?? '–'}` + (d.auto ? ` (automatisch nach ${d.auto} Tagen)` : '') + (d.note ? ` (${d.note})` : '');
+    case 'team':
+      return `${who}: Team ${d.from ?? '–'} → ${d.to ?? '–'}`;
     case 'category':
       return `${who}: Kategorie ${d.from ?? '–'} → ${d.to ?? '–'}`;
     case 'priority':

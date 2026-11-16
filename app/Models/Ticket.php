@@ -300,6 +300,30 @@ class Ticket extends Model
         $this->logEvent('category', $actor, ['from' => $previous?->name, 'to' => $category?->name]);
     }
 
+    /**
+     * Ordnet das Ticket einem Team zu (oder keinem). Ist noch niemand Bearbeiter und verteilt das Team
+     * automatisch, bekommt das Ticket gleich das nächste Teammitglied.
+     */
+    public function changeTeam(?Team $team, ?User $actor = null): void
+    {
+        if ($team && (int) $team->tenant_id !== (int) $this->tenant_id) {
+            throw new AuthorizationException('Dieses Team gehört zu einem anderen Mandanten.');
+        }
+
+        if ($this->team_id === $team?->getKey()) {
+            return;
+        }
+
+        $previous = $this->team;
+        $this->team()->associate($team);
+        $this->save();
+        $this->logEvent('team', $actor, ['from' => $previous?->name, 'to' => $team?->name]);
+
+        if ($team && ! $this->assignee_id && ! $this->isClosed() && ($next = $team->nextAssignee())) {
+            $this->assignTo($next, null);
+        }
+    }
+
     public function changePriority(TicketPriority $priority, ?User $actor = null): void
     {
         if ($this->priority === $priority) {

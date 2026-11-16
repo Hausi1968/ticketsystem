@@ -9,6 +9,10 @@
         ->concat($ticket->events->where('type', '!=', 'created')->map(fn ($e) => ['kind' => 'event', 'at' => $e->created_at, 'item' => $e]))
         ->sortBy(fn ($row) => $row['at']?->getTimestamp())
         ->values();
+    $newestFirst ??= true;
+    if ($newestFirst) {
+        $timeline = $timeline->reverse()->values();
+    }
     $userNames = \App\Models\User::query()->pluck('name', 'id');
 @endphp
 
@@ -26,6 +30,9 @@
     .anl-body { white-space: pre-wrap; word-break: break-word; font-size: .9rem; line-height: 1.55; }
     .anl-files { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
     .anl-file { display: inline-flex; gap: .35rem; align-items: center; font-size: .8rem; border: 1px solid rgb(203 213 225); border-radius: .5rem; padding: .25rem .6rem; }
+    .anl-sort { display: flex; justify-content: space-between; align-items: center; font-size: .85rem; color: rgb(100 116 139); }
+    .anl-sort button { display: inline-flex; gap: .3rem; align-items: center; color: #4f46e5; font-weight: 600; border: 1px solid rgb(203 213 225); border-radius: .5rem; padding: .25rem .65rem; background: transparent; cursor: pointer; }
+    .dark .anl-sort button { border-color: rgb(71 85 105); color: #a5b4fc; }
     .anl-event { font-size: .8rem; color: rgb(100 116 139); text-align: center; }
     .anl-dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem .75rem; font-size: .875rem; }
     .anl-dl dt { color: rgb(100 116 139); }
@@ -35,6 +42,12 @@
 
 <div class="anl-grid">
     <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="anl-sort">
+            <span>Verlauf · {{ $newestFirst ? 'neueste oben' : 'älteste oben' }}</span>
+            <button type="button" wire:click="toggleOrder" title="Reihenfolge umdrehen">
+                {{ $newestFirst ? '↑ Älteste oben zeigen' : '↓ Neueste oben zeigen' }}
+            </button>
+        </div>
         @foreach ($timeline as $row)
             @if ($row['kind'] === 'event')
                 @php
@@ -55,6 +68,7 @@
                         'merged_from' => "{$who} hat ".($e->data['ticket'] ?? '–').' hierher zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) übernommen)',
                         'sender_blocked' => "{$who} hat ".($e->data['entry'] ?? 'den Absender').' für dieses Postfach gesperrt',
                         'anonymized' => "{$who}: Kontaktdaten auf Wunsch gelöscht (Datenschutz)",
+                        'team' => "{$who}: Team ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'category' => "{$who}: Kategorie ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'priority' => "{$who}: Priorität → ".(\App\Enums\TicketPriority::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),
                         'sla_breach' => 'Frist überschritten: '.(\App\Models\SlaPolicy::METRICS[$e->data['metric'] ?? ''] ?? 'SLA'),

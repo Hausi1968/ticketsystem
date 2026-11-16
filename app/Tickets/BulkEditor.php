@@ -4,6 +4,7 @@ namespace App\Tickets;
 
 use App\Enums\MembershipRole;
 use App\Enums\TicketPriority;
+use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
@@ -48,6 +49,19 @@ class BulkEditor
     public function priority(Collection $tickets, TicketPriority $priority, User $actor): array
     {
         return $this->each($tickets, $actor, fn (Ticket $ticket) => $ticket->changePriority($priority, $actor) ?? true);
+    }
+
+    /** Team setzen; Tickets anderer Mandanten als das Team werden übersprungen */
+    public function team(Collection $tickets, ?Team $team, User $actor): array
+    {
+        return $this->each($tickets, $actor, function (Ticket $ticket) use ($team, $actor) {
+            if ($team && (int) $team->tenant_id !== (int) $ticket->tenant_id) {
+                return false;
+            }
+            $ticket->changeTeam($team, $actor);
+
+            return true;
+        });
     }
 
     public function category(Collection $tickets, ?TicketCategory $category, User $actor): array

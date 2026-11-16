@@ -23,7 +23,7 @@ class Ticket extends Model
 
     protected $fillable = [
         'tenant_id', 'subject', 'status_id', 'category_id', 'priority', 'channel', 'mailbox_id', 'team_id', 'contact_id',
-        'assignee_id', 'follow_up_of_id', 'merged_into_id', 'context', 'api_key_id', 'last_customer_message_at', 'last_agent_message_at',
+        'assignee_id', 'follow_up_of_id', 'merged_into_id', 'context', 'fields', 'api_key_id', 'last_customer_message_at', 'last_agent_message_at',
     ];
 
     protected function casts(): array
@@ -32,6 +32,7 @@ class Ticket extends Model
             'priority' => TicketPriority::class,
             'number' => 'integer',
             'context' => 'array',
+            'fields' => 'array',
             'last_customer_message_at' => 'datetime',
             'last_agent_message_at' => 'datetime',
             'first_response_at' => 'datetime',
@@ -258,6 +259,36 @@ class Ticket extends Model
         $this->priority = $priority;
         $this->save();
         $this->logEvent('priority', $actor, ['from' => $previous?->value, 'to' => $priority->value]);
+    }
+
+    /**
+     * Eigene Felder setzen (nur Felder dieses Mandanten, Werte werden geprüft) und Änderungen protokollieren.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function updateFields(array $values, ?User $actor = null): void
+    {
+        $definitions = CustomField::for((int) $this->tenant_id)->keyBy('key');
+        $current = $this->fields ?? [];
+        $changed = [];
+
+        foreach ($values as $key => $value) {
+            if (! $definitions->has($key)) {
+                continue;
+            }
+            $value = $definitions[$key]->normalize($value);
+            if (($current[$key] ?? null) !== $value) {
+                $changed[$definitions[$key]->label] = $definitions[$key]->display($value) ?? '–';
+                $current[$key] = $value;
+            }
+        }
+
+        if ($changed === []) {
+            return;
+        }
+
+        $this->forceFill(['fields' => array_filter($current, fn ($v) => $v !== null)])->save();
+        $this->logEvent('fields', $actor, ['changes' => $changed]);
     }
 
     public function logEvent(string $type, ?User $actor = null, array $data = []): TicketEvent

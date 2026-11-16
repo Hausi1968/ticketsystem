@@ -2,19 +2,19 @@
 
 namespace App\Api;
 
-use App\Mail\Outbound\AcknowledgementSender;
-use App\Tickets\RuleEngine;
-use App\Tickets\TicketNotifier;
 use App\Enums\MessageType;
+use App\Enums\StatusBehaviour;
 use App\Enums\TicketPriority;
+use App\Mail\Outbound\AcknowledgementSender;
 use App\Models\ApiKey;
 use App\Models\ApiUpload;
 use App\Models\Contact;
 use App\Models\Mailbox;
 use App\Models\Ticket;
-use App\Enums\StatusBehaviour;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
+use App\Tickets\RuleEngine;
+use App\Tickets\TicketNotifier;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -63,6 +63,10 @@ class ApiTicketService
             }
 
             $ticket->logEvent('created', data: ['channel' => 'api', 'api_key' => $key->name]);
+
+            if (! empty($data['fields']) && is_array($data['fields'])) {
+                $ticket->updateFields($data['fields']);
+            }
 
             app(RuleEngine::class)->apply($ticket);
             $this->notifier->ticketCreated($ticket);

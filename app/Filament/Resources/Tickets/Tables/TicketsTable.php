@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\Tables;
 
 use App\Enums\TicketPriority;
+use App\Models\CustomField;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\Ticket;
@@ -12,10 +13,12 @@ use App\Sla\SlaDisplay;
 use App\Support\BadgeColor;
 use App\Support\TicketNumber;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,6 +55,7 @@ class TicketsTable
                     ->tooltip(fn (Ticket $record) => collect(SlaDisplay::rows($record))->map(fn ($r) => "{$r['label']}: {$r['text']}")->join("\n") ?: null)
                     ->toggleable(),
                 TextColumn::make('assignee.name')->label('Bearbeiter')->placeholder('– niemand –'),
+                ...self::customFieldColumns(),
                 TextColumn::make('updated_at')->label('Aktualisiert')->since()->sortable()
                     ->tooltip(fn (Ticket $record) => $record->updated_at?->timezone('Europe/Berlin')->format('d.m.Y H:i')),
             ])
@@ -75,10 +79,49 @@ class TicketsTable
                 SelectFilter::make('category_id')->label('Kategorie')->multiple()
                     ->options(fn () => TicketCategory::query()->with('tenant')->ordered()->get()
                         ->mapWithKeys(fn (TicketCategory $c) => [$c->id => $c->name.($c->tenant ? " ({$c->tenant->short_code})" : '')])),
+                ...self::customFieldFilters(),
             ])
             ->recordActions([
                 self::takeAction(),
             ]);
+    }
+
+    /** Eigene Felder mit „In der Ticketliste anzeigen“ (je Kennung eine Spalte, auch wenn mehrere Mandanten sie haben) */
+    private static function listedFields()
+    {
+        return CustomField::query()->where('active', true)->where('show_in_list', true)
+            ->orderBy('sort')->get()->unique('key');
+    }
+
+    private static function customFieldColumns(): array
+    {
+        return self::listedFields()->map(fn (CustomField $field) => TextColumn::make('fields.'.$field->key)->label($field->label)
+            ->placeholder('–')->toggleable()
+            ->formatStateUsing(fn ($state) => $field->display($state)))->values()->all();
+    }
+
+    private static function customFieldFilters(): array
+    {
+        return self::listedFields()->map(function (CustomField $field) {
+            $path = 'fields->'.$field->key;
+
+            if (in_array($field->type, ['select', 'checkbox'], true)) {
+                return SelectFilter::make('field_'.$field->key)->label($field->label)
+                    ->options($field->type === 'checkbox' ? ['1' => 'ja', '0' => 'nein'] : $field->choices())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? ($field->type === 'checkbox'
+                            ? ($data['value'] === '1' ? $query->where($path, true) : $query->where(fn ($q) => $q->whereNull($path)->orWhere($path, false)))
+                            : $query->where($path, $data['value']))
+                        : $query);
+            }
+
+            return Filter::make('field_'.$field->key)
+                ->schema([TextInput::make('value')->label($field->label)])
+                ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                    ? $query->where($path, 'like', '%'.$data['value'].'%')
+                    : $query)
+                ->indicateUsing(fn (array $data) => filled($data['value'] ?? null) ? $field->label.': '.$data['value'] : null);
+        })->values()->all();
     }
 
     public static function takeAction(): Action

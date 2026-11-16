@@ -1,0 +1,53 @@
+# Android-App (mobile/) als APK über EAS bauen.
+# Braucht das Repository-Secret EXPO_TOKEN (expo.dev → Account settings → Access tokens).
+# Start: von Hand („Run workflow“) oder bei Änderungen unter mobile/ auf dem Arbeits-Branch.
+name: App bauen (APK)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-0isqn7]
+    paths: ['mobile/**', '.github/workflows/app.yml']
+
+concurrency:
+  group: app-build
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+      - name: APK bei EAS bauen
+        run: eas build --platform android --profile preview --non-interactive --wait --json > build.json
+
+      - name: APK herunterladen
+        run: |
+          url=$(node -e "const b=require('./build.json');console.log((Array.isArray(b)?b[0]:b).artifacts.buildUrl)")
+          echo "APK: $url" >> "$GITHUB_STEP_SUMMARY"
+          curl -fsSL "$url" -o anliego.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anliego-apk
+          path: mobile/anliego.apk
+          retention-days: 30

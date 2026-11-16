@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tickets\Pages;
 
+use App\Api\ErrorReportService;
 use App\Enums\MembershipRole;
 use App\Enums\TicketPriority;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
@@ -109,7 +110,9 @@ class ViewTicket extends ViewRecord
         $merged = $this->record->merged_into_id ? $this->record->mergedInto : null;
 
         return $this->record->reference().' · '.$this->record->tenant->name
-            .($merged ? ' · zusammengeführt in '.$merged->reference() : '');
+            .($merged ? ' · zusammengeführt in '.$merged->reference() : '')
+            .($this->record->error_count > 1 ? ' · '.$this->record->error_count.'× aufgetreten, zuletzt '
+                .$this->record->error_last_at?->timezone($this->record->tenant->timezone ?: 'Europe/Berlin')->format('d.m.Y H:i') : '');
     }
 
     public function content(Schema $schema): Schema
@@ -154,7 +157,8 @@ class ViewTicket extends ViewRecord
     private function replyAction(): Action
     {
         return Action::make('reply')->label('Antworten')->icon(Heroicon::OutlinedPaperAirplane)
-            ->visible(fn () => $this->canWrite() && ! $this->record->merged_into_id)
+            // Automatische Fehlermeldungen haben keinen Empfänger – dort nur Notizen
+            ->visible(fn () => $this->canWrite() && ! $this->record->merged_into_id && $this->record->channel !== ErrorReportService::CHANNEL)
             ->modalHeading(fn () => 'Antwort an '.$this->record->contact->label())
             ->modalWidth('3xl')
             ->modalSubmitActionLabel('Senden')

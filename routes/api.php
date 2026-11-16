@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AttachmentController;
+use App\Http\Controllers\Api\ErrorReportController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Middleware\AuthenticateApiKey;
 use Illuminate\Support\Facades\Route;
@@ -12,4 +13,5 @@ Route::prefix('v1')->middleware([AuthenticateApiKey::class, 'throttle:anliego-ap
     Route::get('tickets', [TicketController::class, 'index']);
     Route::get('tickets/{reference}', [TicketController::class, 'show']);
     Route::post('tickets/{reference}/messages', [TicketController::class, 'reply']);
+    Route::post('errors', [ErrorReportController::class, 'store']);
 });

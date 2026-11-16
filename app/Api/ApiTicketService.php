@@ -175,7 +175,7 @@ class ApiTicketService
         return $contact;
     }
 
-    private function categoryFor(int $tenantId, ?string $name): ?TicketCategory
+    public function categoryFor(int $tenantId, ?string $name): ?TicketCategory
     {
         if (blank($name)) {
             return null;

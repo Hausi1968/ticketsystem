@@ -160,10 +160,7 @@ class RunAutomation extends Command
     /** Ziel für gelöste Tickets: der erste aktive schließende Status außer "Gelöst" (vorbelegt: "Geschlossen") */
     private function closedStatus(): ?TicketStatus
     {
-        return TicketStatus::query()
-            ->where('active', true)->where('behaviour', 'closed')
-            ->where(fn ($query) => $query->whereNull('system_key')->orWhere('system_key', '!=', TicketStatus::SOLVED))
-            ->orderBy('sort')->first();
+        return TicketStatus::finalClosed();
     }
 
     private function render(Ticket $ticket, Tenant $tenant, int $days): string

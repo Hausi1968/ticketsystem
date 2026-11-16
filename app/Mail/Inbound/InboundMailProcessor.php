@@ -112,7 +112,8 @@ class InboundMailProcessor
     /** @return array{0: Ticket, 1: string} */
     private function resolveTicket(Mailbox $mailbox, ParsedEmail $email): array
     {
-        $existing = $this->findByReferences($email) ?? $this->findBySubjectToken($mailbox, $email);
+        // Zusammengeführte Tickets: die Antwort gehört ins Ziel-Ticket
+        $existing = ($this->findByReferences($email) ?? $this->findBySubjectToken($mailbox, $email))?->mergeTarget();
 
         if ($existing === null) {
             return [$this->createTicket($mailbox, $email), self::CREATED];

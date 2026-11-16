@@ -136,6 +136,10 @@ Kurzform plus `messages`: die Meldung des Nutzers und die Antworten des Teams, j
 - Ist beim erledigten Status „Kundenantwort → neues Ticket“ eingestellt, entsteht ein **Folgeticket**.
   Die Antwort (`201`) ist die Kurzform des Tickets, das die Nachricht bekommen hat, plus `"follow_up": true|false`.
 
+### Zusammengeführte Tickets
+
+Hat das Team ein Ticket mit einem anderen zusammengeführt, liefern `GET /tickets/{nummer}` und `POST /tickets/{nummer}/messages` für die alte Nummer das Ziel-Ticket (an `reference` in der Antwort erkennbar). Antworten des Nutzers landen also automatisch im richtigen Ticket. In der Liste der Meldungen bleibt das alte Ticket als geschlossen stehen.
+
 ## 6. Fehler
 
 Fehler kommen immer als JSON.

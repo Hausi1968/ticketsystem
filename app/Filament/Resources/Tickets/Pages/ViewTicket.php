@@ -12,6 +12,7 @@ use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
 use App\Models\User;
+use App\Tickets\TicketMerger;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\FileUpload;
@@ -20,12 +21,13 @@ use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
@@ -43,7 +45,10 @@ class ViewTicket extends ViewRecord
 
     public function getSubheading(): string|Htmlable|null
     {
-        return $this->record->reference().' · '.$this->record->tenant->name;
+        $merged = $this->record->merged_into_id ? $this->record->mergedInto : null;
+
+        return $this->record->reference().' · '.$this->record->tenant->name
+            .($merged ? ' · zusammengeführt in '.$merged->reference() : '');
     }
 
     public function content(Schema $schema): Schema
@@ -67,6 +72,7 @@ class ViewTicket extends ViewRecord
                 $this->statusAction(),
                 $this->categoryAction(),
                 $this->priorityAction(),
+                $this->mergeAction(),
             ])->label('Bearbeiten')->button()->color('gray')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
         ];
     }
@@ -81,7 +87,7 @@ class ViewTicket extends ViewRecord
     private function replyAction(): Action
     {
         return Action::make('reply')->label('Antworten')->icon(Heroicon::OutlinedPaperAirplane)
-            ->visible(fn () => $this->canWrite())
+            ->visible(fn () => $this->canWrite() && ! $this->record->merged_into_id)
             ->modalHeading(fn () => 'Antwort an '.$this->record->contact->label())
             ->modalWidth('3xl')
             ->modalSubmitActionLabel('Senden')
@@ -224,6 +230,52 @@ class ViewTicket extends ViewRecord
                 $this->record->changePriority($priority, auth()->user());
                 $this->refreshRecord();
             });
+    }
+
+    private function mergeAction(): Action
+    {
+        return Action::make('merge')->label('Zusammenführen')->icon(Heroicon::OutlinedArrowsPointingIn)
+            ->visible(fn () => $this->canWrite() && ! $this->record->merged_into_id)
+            ->modalHeading('Ticket zusammenführen')
+            ->modalDescription(fn () => 'Alle Nachrichten und Anhänge von '.$this->record->reference().' wandern in das gewählte Ticket, '
+                .'der Absender wird dort beteiligt. Dieses Ticket wird geschlossen; spätere Antworten darauf landen automatisch im gewählten Ticket.')
+            ->modalSubmitActionLabel('Zusammenführen')
+            ->schema([
+                Select::make('target_id')->label('In Ticket')->required()->searchable()
+                    ->helperText('Nummer oder Betreff eingeben. Vorgeschlagen: offene Tickets desselben Kontakts.')
+                    ->options(fn () => $this->mergeCandidates()->where('contact_id', $this->record->contact_id)
+                        ->unresolved()->limit(20)->get()->mapWithKeys(fn (Ticket $t) => [$t->getKey() => self::ticketLabel($t)]))
+                    ->getSearchResultsUsing(function (string $search) {
+                        $number = (int) preg_replace('/\D/', '', $search);
+
+                        return $this->mergeCandidates()
+                            ->where(fn ($query) => $query->where('subject', 'like', '%'.$search.'%')
+                                ->when($number > 0, fn ($query) => $query->orWhere('number', $number)))
+                            ->limit(30)->get()->mapWithKeys(fn (Ticket $t) => [$t->getKey() => self::ticketLabel($t)]);
+                    })
+                    ->getOptionLabelUsing(fn ($value) => ($t = Ticket::query()->find($value)) ? self::ticketLabel($t) : null),
+            ])
+            ->action(function (array $data) {
+                $target = Ticket::query()->where('tenant_id', $this->record->tenant_id)->findOrFail($data['target_id']);
+                $target = app(TicketMerger::class)->merge($this->record, $target, auth()->user());
+
+                Notification::make()->success()->title('Zusammengeführt in '.$target->reference())->send();
+                $this->redirect(TicketResource::getUrl('view', ['record' => $target]));
+            });
+    }
+
+    private function mergeCandidates()
+    {
+        return Ticket::query()->with('tenant', 'contact')
+            ->where('tenant_id', $this->record->tenant_id)
+            ->whereKeyNot($this->record->getKey())
+            ->whereNull('merged_into_id')
+            ->latest('id');
+    }
+
+    private static function ticketLabel(Ticket $ticket): string
+    {
+        return $ticket->reference().' – '.Str::limit($ticket->subject, 60).' ('.($ticket->contact?->email ?? '–').')';
     }
 
     /**

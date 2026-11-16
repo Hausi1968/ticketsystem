@@ -6,6 +6,7 @@ use App\Enums\StatusBehaviour;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Once;
 
 /**
  * Frei definierbarer Ticketstatus (für alle Mandanten gleich).
@@ -66,13 +67,22 @@ class TicketStatus extends Model
             }
         });
 
-        static::saved(fn () => \Illuminate\Support\Once::flush());
+        static::saved(fn () => Once::flush());
     }
 
     public static function system(string $key): self
     {
         // once(): je Anfrage bzw. Job nur einmal laden (wird zwischen Tests automatisch geleert)
         return once(fn () => static::query()->where('system_key', $key)->firstOrFail());
+    }
+
+    /** Endgültig geschlossener Status (z. B. „Geschlossen“), sonst „Gelöst“ */
+    public static function finalClosed(): ?self
+    {
+        return static::query()
+            ->where('active', true)->where('behaviour', 'closed')
+            ->where(fn ($query) => $query->whereNull('system_key')->orWhere('system_key', '!=', self::SOLVED))
+            ->orderBy('sort')->first();
     }
 
     /** @return list<int> */

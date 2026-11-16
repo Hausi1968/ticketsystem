@@ -23,7 +23,7 @@ class Ticket extends Model
 
     protected $fillable = [
         'tenant_id', 'subject', 'status_id', 'category_id', 'priority', 'channel', 'mailbox_id', 'team_id', 'contact_id',
-        'assignee_id', 'follow_up_of_id', 'context', 'api_key_id', 'last_customer_message_at', 'last_agent_message_at',
+        'assignee_id', 'follow_up_of_id', 'merged_into_id', 'context', 'api_key_id', 'last_customer_message_at', 'last_agent_message_at',
     ];
 
     protected function casts(): array
@@ -98,6 +98,26 @@ class Ticket extends Model
     public function followUpOf(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'follow_up_of_id');
+    }
+
+    public function mergedInto(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'merged_into_id');
+    }
+
+    /** Ticket, in dem dieses aufgegangen ist (über mehrere Zusammenführungen), sonst das Ticket selbst */
+    public function mergeTarget(): Ticket
+    {
+        $ticket = $this;
+        for ($i = 0; $i < 10 && $ticket->merged_into_id; $i++) {
+            $next = Ticket::query()->find($ticket->merged_into_id);
+            if (! $next) {
+                break;
+            }
+            $ticket = $next;
+        }
+
+        return $ticket;
     }
 
     public function messages(): HasMany

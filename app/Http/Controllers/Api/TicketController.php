@@ -94,7 +94,7 @@ class TicketController
     public function show(string $reference): JsonResponse
     {
         $number = TicketNumber::parse($reference) ?? abort(404);
-        $ticket = Ticket::query()->with('status', 'category', 'tenant')->where('number', $number)->firstOrFail();
+        $ticket = Ticket::query()->where('number', $number)->firstOrFail()->mergeTarget()->load('status', 'category', 'tenant');
 
         return response()->json(TicketPresenter::full($ticket));
     }

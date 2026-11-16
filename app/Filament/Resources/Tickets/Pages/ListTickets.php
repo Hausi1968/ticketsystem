@@ -17,20 +17,26 @@ class ListTickets extends ListRecords
     {
         return [
             'mine' => Tab::make('Meine')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('assignee_id', auth()->id())->unresolved())
+                ->modifyQueryUsing(fn (Builder $query) => $this->searching() ? $query : $query->where('assignee_id', auth()->id())->unresolved())
                 ->badge(fn () => Ticket::query()->where('assignee_id', auth()->id())->withBehaviour(StatusBehaviour::Open)->count() ?: null),
             'unassigned' => Tab::make('Unzugewiesen')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('assignee_id')->unresolved())
+                ->modifyQueryUsing(fn (Builder $query) => $this->searching() ? $query : $query->whereNull('assignee_id')->unresolved())
                 ->badge(fn () => Ticket::query()->whereNull('assignee_id')->unresolved()->count() ?: null)
                 ->badgeColor('warning'),
             'open' => Tab::make('Alle offenen')
-                ->modifyQueryUsing(fn (Builder $query) => $query->withBehaviour(StatusBehaviour::Open)),
+                ->modifyQueryUsing(fn (Builder $query) => $this->searching() ? $query : $query->withBehaviour(StatusBehaviour::Open)),
             'pending' => Tab::make('Wartend')
-                ->modifyQueryUsing(fn (Builder $query) => $query->withBehaviour(StatusBehaviour::Pending)),
+                ->modifyQueryUsing(fn (Builder $query) => $this->searching() ? $query : $query->withBehaviour(StatusBehaviour::Pending)),
             'closed' => Tab::make('Geschlossen')
-                ->modifyQueryUsing(fn (Builder $query) => $query->withBehaviour(StatusBehaviour::Closed)),
+                ->modifyQueryUsing(fn (Builder $query) => $this->searching() ? $query : $query->withBehaviour(StatusBehaviour::Closed)),
             'all' => Tab::make('Alle'),
         ];
+    }
+
+    /** Bei einer Suche gilt der Reiter nicht: gesucht wird in allen Tickets, auch wartenden und geschlossenen. */
+    protected function searching(): bool
+    {
+        return filled(trim((string) $this->tableSearch));
     }
 
     public function getDefaultActiveTab(): string|int|null

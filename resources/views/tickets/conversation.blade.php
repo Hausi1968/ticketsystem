@@ -169,6 +169,19 @@
             </x-filament::section>
         @endif
 
+        @php $timeEntries = $ticket->timeEntries()->with('user')->get(); @endphp
+        @if ($timeEntries->isNotEmpty())
+            <x-filament::section>
+                <x-slot name="heading">Zeit: {{ \App\Models\TimeEntry::format((int) $timeEntries->sum('minutes')) }}</x-slot>
+                <dl class="anl-dl">
+                    @foreach ($timeEntries as $entry)
+                        <dt>{{ $entry->worked_on->format('d.m.') }} · {{ $entry->user?->name ?? '–' }}</dt>
+                        <dd>{{ $entry->minutes }} Min.@if ($entry->note) · {{ $entry->note }}@endif</dd>
+                    @endforeach
+                </dl>
+            </x-filament::section>
+        @endif
+
         @php $slaRows = \App\Sla\SlaDisplay::rows($ticket); @endphp
         @if ($slaRows !== [])
             <x-filament::section>

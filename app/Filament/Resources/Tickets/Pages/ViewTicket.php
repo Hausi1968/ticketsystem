@@ -16,10 +16,12 @@ use App\Models\User;
 use App\Tickets\TicketMerger;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Utilities\Get;
@@ -73,6 +75,7 @@ class ViewTicket extends ViewRecord
                 $this->statusAction(),
                 $this->categoryAction(),
                 $this->priorityAction(),
+                $this->timeAction(),
                 $this->fieldsAction(),
                 $this->mergeAction(),
             ])->label('Bearbeiten')->button()->color('gray')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
@@ -113,6 +116,8 @@ class ViewTicket extends ViewRecord
                     ->default(fn () => $this->record->participants->pluck('email')->all()),
                 FileUpload::make('files')->label('Anhänge')->multiple()->storeFiles(false)
                     ->maxSize(20 * 1024)->helperText('Bis 20 MB je Datei. Größere Dateien bitte als Link versenden.'),
+                TextInput::make('minutes')->label('Zeit (Minuten)')->numeric()->integer()->minValue(0)->maxValue(1440)
+                    ->placeholder('optional, z. B. 15')->helperText('Wird in der Zeiterfassung des Tickets gebucht.'),
                 Select::make('status_id')->label('Status danach')->options(fn () => self::statusOptions())
                     ->default(fn () => TicketStatus::system(TicketStatus::WAITING)->getKey())->required(),
             ])
@@ -123,6 +128,7 @@ class ViewTicket extends ViewRecord
                         $this->storeUploads($data['files'] ?? []),
                         TicketStatus::query()->findOrFail($data['status_id']),
                     );
+                    $this->record->logTime((int) ($data['minutes'] ?? 0), auth()->user(), message: $message);
                 } catch (Throwable $e) {
                     report($e);
                     Notification::make()->danger()->title('Antwort nicht gesendet')
@@ -148,9 +154,12 @@ class ViewTicket extends ViewRecord
             ->schema([
                 Textarea::make('body')->label('Notiz')->required()->rows(6)->autosize(),
                 FileUpload::make('files')->label('Anhänge')->multiple()->storeFiles(false)->maxSize(100 * 1024),
+                TextInput::make('minutes')->label('Zeit (Minuten)')->numeric()->integer()->minValue(0)->maxValue(1440)
+                    ->placeholder('optional, z. B. 15')->helperText('Wird in der Zeiterfassung des Tickets gebucht.'),
             ])
             ->action(function (array $data) {
-                app(ReplySender::class)->note($this->record, auth()->user(), $data['body'], $this->storeUploads($data['files'] ?? []));
+                $note = app(ReplySender::class)->note($this->record, auth()->user(), $data['body'], $this->storeUploads($data['files'] ?? []));
+                $this->record->logTime((int) ($data['minutes'] ?? 0), auth()->user(), message: $note);
                 Notification::make()->success()->title('Notiz gespeichert')->send();
                 $this->refreshRecord();
             });
@@ -230,6 +239,22 @@ class ViewTicket extends ViewRecord
             ->action(function (array $data) {
                 $priority = $data['priority'] instanceof TicketPriority ? $data['priority'] : TicketPriority::from($data['priority']);
                 $this->record->changePriority($priority, auth()->user());
+                $this->refreshRecord();
+            });
+    }
+
+    private function timeAction(): Action
+    {
+        return Action::make('time')->label('Zeit erfassen')->icon(Heroicon::OutlinedClock)
+            ->visible(fn () => $this->canWrite())
+            ->schema([
+                TextInput::make('minutes')->label('Minuten')->numeric()->integer()->minValue(1)->maxValue(1440)->required(),
+                DatePicker::make('worked_on')->label('Datum')->default(now())->maxDate(now())->native(false)->displayFormat('d.m.Y')->required(),
+                TextInput::make('note')->label('Tätigkeit')->maxLength(255)->placeholder('optional, z. B. Telefonat'),
+            ])
+            ->action(function (array $data) {
+                $this->record->logTime((int) $data['minutes'], auth()->user(), $data['note'] ?? null, $data['worked_on']);
+                Notification::make()->success()->title('Zeit gebucht')->send();
                 $this->refreshRecord();
             });
     }

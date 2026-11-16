@@ -6,6 +6,7 @@ use App\Enums\MessageType;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Models\TimeEntry;
 use App\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -27,6 +28,7 @@ class MonthlyReport
         'avg_first_response_h' => 'Ø erste Antwort (Std.)',
         'avg_resolution_h' => 'Ø Lösungszeit (Std.)',
         'sla_breached' => 'Frist überschritten',
+        'time_h' => 'Erfasste Zeit (Std.)',
         'top_category' => 'Häufigste Kategorie',
     ];
 
@@ -81,6 +83,8 @@ class MonthlyReport
             'avg_first_response_h' => self::hours($firstResponse),
             'avg_resolution_h' => self::hours($resolution),
             'sla_breached' => $created->where('sla_breached', true)->count(),
+            'time_h' => round(TimeEntry::query()->where('tenant_id', $tenant->id)
+                ->whereBetween('worked_on', [$from->toDateString(), $to->toDateString()])->sum('minutes') / 60, 2),
             'top_category' => $topCategory->isNotEmpty() ? $topCategory->keys()->first().' ('.$topCategory->first().')' : null,
             // Rohwerte für die Summenzeile
             '_first' => $firstResponse->all(),
@@ -103,6 +107,7 @@ class MonthlyReport
             'avg_first_response_h' => self::hours(collect(array_merge(...array_column($rows, '_first')))),
             'avg_resolution_h' => self::hours(collect(array_merge(...array_column($rows, '_resolution')))),
             'sla_breached' => $sum('sla_breached'),
+            'time_h' => round($sum('time_h'), 2),
             'top_category' => null,
             '_first' => [],
             '_resolution' => [],
@@ -114,6 +119,31 @@ class MonthlyReport
         return $minutes->isEmpty() ? null : round($minutes->avg() / 60, 1);
     }
 
+    /** Einzelne Zeitbuchungen des Monats als CSV, z. B. als Anlage zur Rechnung */
+    public function timeCsv(string $month, ?int $tenantId = null): string
+    {
+        [$from, $to] = self::period($month);
+
+        $entries = app(TenantContext::class)->runWithoutTenancy(fn () => TimeEntry::query()
+            ->with('ticket.tenant', 'user')
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+            ->whereBetween('worked_on', [$from->toDateString(), $to->toDateString()])
+            ->orderBy('tenant_id')->orderBy('worked_on')->orderBy('id')->get());
+
+        $out = fopen('php://temp', 'r+');
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['Datum', 'Mandant', 'Ticket', 'Betreff', 'Mitarbeiter', 'Minuten', 'Tätigkeit'], ';');
+        foreach ($entries as $entry) {
+            fputcsv($out, [
+                $entry->worked_on->format('d.m.Y'), $entry->ticket?->tenant?->name, $entry->ticket?->reference(),
+                $entry->ticket?->subject, $entry->user?->name, $entry->minutes, $entry->note,
+            ], ';');
+        }
+        rewind($out);
+
+        return stream_get_contents($out);
+    }
+
     /** CSV (Semikolon, UTF-8 mit BOM, damit Excel Umlaute richtig anzeigt) */
     public function csv(array $rows): string
     {
@@ -122,7 +152,7 @@ class MonthlyReport
         fputcsv($out, array_values(self::COLUMNS), ';');
         foreach ($rows as $row) {
             fputcsv($out, array_map(
-                fn ($key) => is_float($row[$key]) ? number_format($row[$key], 1, ',', '') : $row[$key],
+                fn ($key) => is_float($row[$key]) ? number_format($row[$key], $key === 'time_h' ? 2 : 1, ',', '') : $row[$key],
                 array_keys(self::COLUMNS),
             ), ';');
         }

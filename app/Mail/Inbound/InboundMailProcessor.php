@@ -15,6 +15,7 @@ use App\Models\TicketMessage;
 use App\Models\TicketStatus;
 use App\Support\HtmlCleaner;
 use App\Tenancy\TenantContext;
+use App\Tickets\RuleEngine;
 use App\Tickets\TicketNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -94,6 +95,7 @@ class InboundMailProcessor
                 $this->appendMessage($ticket, $email, $rawPath);
 
                 if (in_array($outcome, [self::CREATED, self::FOLLOW_UP], true)) {
+                    app(RuleEngine::class)->apply($ticket);
                     $this->notifier->ticketCreated($ticket);
                     $this->acknowledgement->queueFor($ticket, $email);
                 } else {
@@ -112,7 +114,8 @@ class InboundMailProcessor
     /** @return array{0: Ticket, 1: string} */
     private function resolveTicket(Mailbox $mailbox, ParsedEmail $email): array
     {
-        $existing = $this->findByReferences($email) ?? $this->findBySubjectToken($mailbox, $email);
+        // Zusammengeführte Tickets: die Antwort gehört ins Ziel-Ticket
+        $existing = ($this->findByReferences($email) ?? $this->findBySubjectToken($mailbox, $email))?->mergeTarget();
 
         if ($existing === null) {
             return [$this->createTicket($mailbox, $email), self::CREATED];

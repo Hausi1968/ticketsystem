@@ -64,6 +64,11 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return $this->active;
     }
 
+    public function assignedTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'assignee_id');
+    }
+
     public function memberships(): HasMany
     {
         return $this->hasMany(TenantMembership::class);

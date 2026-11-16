@@ -3,6 +3,7 @@
 namespace App\Api;
 
 use App\Mail\Outbound\AcknowledgementSender;
+use App\Tickets\RuleEngine;
 use App\Tickets\TicketNotifier;
 use App\Enums\MessageType;
 use App\Enums\TicketPriority;
@@ -63,6 +64,7 @@ class ApiTicketService
 
             $ticket->logEvent('created', data: ['channel' => 'api', 'api_key' => $key->name]);
 
+            app(RuleEngine::class)->apply($ticket);
             $this->notifier->ticketCreated($ticket);
             $this->acknowledgement->queueFor($ticket);
 
@@ -90,12 +92,16 @@ class ApiTicketService
             throw new AuthorizationException('Dieses Ticket gehört nicht zu diesem Nutzer.');
         }
 
+        // Wurde das Ticket zusammengeführt, geht die Antwort ins Ziel-Ticket, Absender bleibt der Nutzer
+        $author = $ticket->contact;
+        $ticket = $ticket->mergeTarget();
+
         $status = $ticket->status;
         if ($status->closes() && $status->reply_creates_new_ticket) {
             $followUp = $this->create($key, [
                 'subject' => $ticket->subject,
                 'description' => $data['body'],
-                'reporter' => $reporter + ['email' => $ticket->contact->email],
+                'reporter' => $reporter + ['email' => $author->email],
                 'attachment_ids' => $data['attachment_ids'] ?? [],
             ] + ['category' => $ticket->category?->name]);
             $followUp->forceFill(['follow_up_of_id' => $ticket->getKey(), 'priority' => $ticket->priority])->save();
@@ -103,8 +109,8 @@ class ApiTicketService
             return [$followUp, true];
         }
 
-        return DB::transaction(function () use ($key, $ticket, $data, $status) {
-            $contact = $ticket->contact;
+        return DB::transaction(function () use ($key, $ticket, $data, $status, $author) {
+            $contact = $author;
             $uploads = $this->uploadsFor($key, $data['attachment_ids'] ?? []);
 
             $message = $ticket->messages()->create([

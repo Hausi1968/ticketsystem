@@ -56,6 +56,10 @@ class ImapMailFetcher implements MailFetcher
                 throw new RuntimeException("Verbindung ok, aber Ordner „{$mailbox->processed_folder}“ für verarbeitete E-Mails nicht gefunden.");
             }
 
+            if ($mailbox->sent_folder && ! $client->getFolderByPath($mailbox->sent_folder)) {
+                throw new RuntimeException("Verbindung ok, aber Ordner „{$mailbox->sent_folder}“ für gesendete Antworten nicht gefunden. Den genauen Namen zeigt Outlook in der Ordnerliste.");
+            }
+
             $unseen = $folder->query()->unseen()->leaveUnread()->setFetchBody(false)->count();
 
             return "Verbindung erfolgreich. Ungelesene E-Mails in {$folder->path}: {$unseen}";

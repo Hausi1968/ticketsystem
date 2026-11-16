@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\AgentToken;
+use App\Security\SecurityLog;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,15 @@ class AuthenticateAgentToken
 
         if (! $token || ! $token->user?->active) {
             return response()->json(['error' => 'unauthorized', 'message' => 'Bitte neu anmelden.'], 401);
+        }
+
+        // Lange nicht benutzte Anmeldungen verfallen (z. B. ein verlorenes oder ausgemustertes Handy)
+        $days = (int) config('anliego.agent_token_days');
+        if ($days > 0 && $token->last_used_at && $token->last_used_at->lt(now()->subDays($days))) {
+            SecurityLog::record('device_expired', $token->user, ['device' => $token->name], actor: $token->user);
+            $token->delete();
+
+            return response()->json(['error' => 'unauthorized', 'message' => 'Die Anmeldung ist abgelaufen. Bitte neu anmelden.'], 401);
         }
 
         Auth::setUser($token->user);

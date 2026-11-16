@@ -31,3 +31,6 @@ Schedule::command('anliego:sla-check')
 
 // Je Mandant: Erinnerung an Kunden, wartende Tickets lösen, gelöste schließen
 Schedule::command('anliego:automation')->hourly()->withoutOverlapping(30);
+
+// Wiedervorlage: zurückgestellte Tickets zum gewählten Zeitpunkt zurückholen
+Schedule::command('anliego:wake-snoozed')->everyMinute()->withoutOverlapping(5);

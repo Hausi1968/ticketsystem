@@ -5,6 +5,7 @@ namespace App\Tickets;
 use App\Enums\MembershipRole;
 use App\Enums\MessageType;
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\TicketActivity;
@@ -53,6 +54,36 @@ class TicketNotifier
         $this->later(fn () => $this->send(collect([$assignee])->where('active', true), 'assigned', $ticket, $actor));
     }
 
+    /** Ticket wurde von Hand einem Team zugeordnet (nur wenn das Team das eingeschaltet hat) */
+    public function teamAssigned(Ticket $ticket, Team $team, ?User $actor): void
+    {
+        $this->later(fn () => $this->send(
+            User::query()->where('active', true)
+                ->whereIn('id', DB::table('team_user')->where('team_id', $team->getKey())->select('user_id'))->get(),
+            'team_assigned', $ticket, $actor, ['team' => $team->name]));
+    }
+
+    /** Wiedervorlage fällig: wer zurückgestellt hat und der Bearbeiter; sonst Team bzw. Mandant */
+    public function snoozeDue(Ticket $ticket, ?int $snoozedBy): void
+    {
+        $this->later(function () use ($ticket, $snoozedBy) {
+            $recipients = User::query()->where('active', true)
+                ->whereIn('id', array_filter([$snoozedBy, $ticket->assignee_id]))->get();
+
+            $this->send($recipients->isEmpty() ? $this->teamOrTenantMembers($ticket) : $recipients, 'snooze_due', $ticket, self::system());
+        });
+    }
+
+    /**
+     * Erwähnung in einer internen Notiz. Nur Mitarbeiter, die das Ticket sehen dürfen.
+     *
+     * @param  Collection<int, User>  $users
+     */
+    public function mentioned(Ticket $ticket, Collection $users, User $actor, string $excerpt): void
+    {
+        $this->later(fn () => $this->send($users, 'mention', $ticket, $actor, ['excerpt' => Str::limit($excerpt, 240)]));
+    }
+
     /** Frist läuft bald ab ('sla_warning') oder ist überschritten ('sla_breach') */
     public function slaAlert(Ticket $ticket, string $event, string $metricLabel, CarbonInterface $due): void
     {
@@ -96,8 +127,9 @@ class TicketNotifier
 
     private function send(Collection $recipients, string $event, Ticket $ticket, ?User $actor = null, array $extra = []): void
     {
-        $actor ??= auth()->user();
-        $recipients = $recipients->reject(fn (User $u) => $actor && $u->is($actor))->values();
+        // Automatische Hinweise (z. B. Wiedervorlage) gehen auch an den, der gerade angemeldet ist
+        $actor = $actor === self::system() ? null : ($actor ?? auth()->user());
+        $recipients = $recipients->reject(fn (User $u) => $actor && $u->is($actor))->unique('id')->values();
 
         if ($recipients->isEmpty()) {
             return;
@@ -108,6 +140,14 @@ class TicketNotifier
         } catch (Throwable $e) {
             Log::warning('Benachrichtigung fehlgeschlagen', ['ticket' => $ticket->getKey(), 'event' => $event, 'error' => $e->getMessage()]);
         }
+    }
+
+    /** Platzhalter für „vom System ausgelöst“: niemand wird als Auslöser ausgenommen */
+    private static function system(): User
+    {
+        static $system;
+
+        return $system ??= new User;
     }
 
     private function describe(Ticket $ticket, ?User $actor): array

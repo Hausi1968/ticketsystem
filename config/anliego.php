@@ -2,7 +2,13 @@
 
 return [
     // Version der Weboberfläche (bei jeder für Mitarbeiter sichtbaren Änderung erhöhen, siehe Handbuch Kap. 12)
-    'version' => '1.2.0',
+    'version' => '1.3.0',
+
+    // App-Anmeldungen, die so viele Tage nicht benutzt wurden, verfallen (0 = nie)
+    // Aufbewahrung des Sicherheitsprotokolls in Tagen
+    'security_log_days' => (int) env('ANLIEGO_SECURITY_LOG_DAYS', 180),
+
+    'agent_token_days' => (int) env('ANLIEGO_AGENT_TOKEN_DAYS', 90),
 
     // Zwei-Faktor-Anmeldung für alle Mitarbeiter verpflichtend (empfohlen in Produktion,
     // da jeder Zugang Daten mehrerer Mandanten sieht)

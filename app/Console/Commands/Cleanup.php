@@ -31,7 +31,13 @@ class Cleanup extends Command
 
         $keys = DB::table('api_idempotency_keys')->where('created_at', '<', now()->subDays(7))->delete();
 
-        $this->line("{$deleted} Upload(s) und {$keys} Idempotenz-Schlüssel gelöscht.");
+        $events = DB::table('security_events')->where('created_at', '<', now()->subDays(max(1, (int) config('anliego.security_log_days'))))->delete();
+
+        // App-Anmeldungen, die lange nicht benutzt wurden
+        $days = (int) config('anliego.agent_token_days');
+        $tokens = $days > 0 ? DB::table('agent_tokens')->where('last_used_at', '<', now()->subDays($days))->delete() : 0;
+
+        $this->line("{$deleted} Upload(s), {$keys} Idempotenz-Schlüssel, {$events} Protokolleinträge und {$tokens} abgelaufene App-Anmeldung(en) gelöscht.");
 
         return self::SUCCESS;
     }

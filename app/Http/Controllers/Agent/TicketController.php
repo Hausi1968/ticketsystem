@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Agent;
 use App\Agent\AgentPresenter;
 use App\Enums\MessageType;
 use App\Enums\TicketPriority;
+use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Mail\Outbound\ReplySender;
 use App\Models\Team;
 use App\Models\Ticket;
@@ -58,8 +59,8 @@ class TicketController
             'has_more' => $page->hasMorePages(),
             'total' => $page->total(),
             'counts' => [
-                'mine' => Ticket::query()->where('assignee_id', $request->user()->getKey())->unresolved()->count(),
-                'unassigned' => Ticket::query()->whereNull('assignee_id')->unresolved()->count(),
+                'mine' => Ticket::query()->where('assignee_id', $request->user()->getKey())->unresolved()->notSnoozed()->count(),
+                'unassigned' => Ticket::query()->whereNull('assignee_id')->unresolved()->notSnoozed()->count(),
                 'teams' => TicketTabs::apply(Ticket::query(), 'teams', $request->user())->count(),
             ],
         ]);
@@ -160,6 +161,19 @@ class TicketController
                 $team = ! empty($data['team_id']) ? Team::query()->findOrFail($data['team_id']) : null;
                 abort_if($team && (int) $team->tenant_id !== (int) $record->tenant_id, 422, 'Dieses Team gehört zu einem anderen Mandanten.');
                 $record->changeTeam($team, $user);
+                break;
+            case 'snooze':
+                // preset: tomorrow | days3 | week | custom (mit until) | off (Wiedervorlage aufheben)
+                $data = $request->validate([
+                    'preset' => ['required', Rule::in(['tomorrow', 'days3', 'week', 'custom', 'off'])],
+                    'until' => ['nullable', 'required_if:preset,custom', 'date', 'after:now'],
+                ]);
+                if ($data['preset'] === 'off') {
+                    $record->unsnooze($user);
+                } else {
+                    abort_if($record->isClosed(), 422, 'Geschlossene Tickets können nicht zurückgestellt werden.');
+                    $record->snooze(ViewTicket::snoozeTime($data['preset'], $data['until'] ?? null, $record->tenant?->timezone ?: 'Europe/Berlin'), $user);
+                }
                 break;
             case 'status':
                 $data = $request->validate(['status_id' => ['required', 'integer']]);

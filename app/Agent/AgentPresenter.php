@@ -61,6 +61,7 @@ class AgentPresenter
             'contact' => $ticket->contact ? ['name' => $ticket->contact->name, 'email' => $ticket->contact->email] : null,
             'channel' => $ticket->channel,
             'sla_due_at' => $ticket->sla_due_at?->toIso8601String(),
+            'snoozed_until' => $ticket->isSnoozed() ? $ticket->snoozed_until->toIso8601String() : null,
             'error_count' => (int) $ticket->error_count,
             'created_at' => $ticket->created_at?->toIso8601String(),
             'updated_at' => $ticket->updated_at?->toIso8601String(),

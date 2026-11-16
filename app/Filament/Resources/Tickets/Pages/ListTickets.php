@@ -29,6 +29,7 @@ class ListTickets extends ListRecords
         'mine' => 'Meine',
         'unassigned' => 'Unzugewiesen',
         'teams' => 'Meine Teams',
+        'snoozed' => 'Zurückgestellt',
         'open' => 'Alle offenen',
         'pending' => 'Wartend',
         'closed' => 'Geschlossen',
@@ -48,13 +49,14 @@ class ListTickets extends ListRecords
     {
         $tabs = [
             'mine' => Tab::make('Meine')
-                ->badge(fn () => Ticket::query()->where('assignee_id', auth()->id())->withBehaviour(StatusBehaviour::Open)->count() ?: null),
+                ->badge(fn () => Ticket::query()->where('assignee_id', auth()->id())->withBehaviour(StatusBehaviour::Open)->notSnoozed()->count() ?: null),
             'unassigned' => Tab::make('Unzugewiesen')
-                ->badge(fn () => Ticket::query()->whereNull('assignee_id')->unresolved()->count() ?: null)
+                ->badge(fn () => Ticket::query()->whereNull('assignee_id')->unresolved()->notSnoozed()->count() ?: null)
                 ->badgeColor('warning'),
             'teams' => Tab::make('Meine Teams')
                 ->badge(fn () => TicketTabs::apply(Ticket::query(), 'teams', auth()->user())->count() ?: null)
                 ->badgeColor('gray'),
+            'snoozed' => Tab::make('Zurückgestellt')->icon(Heroicon::OutlinedClock),
             'open' => Tab::make('Alle offenen'),
             'pending' => Tab::make('Wartend'),
             'closed' => Tab::make('Geschlossen'),

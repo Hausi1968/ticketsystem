@@ -68,6 +68,12 @@
                         'merged_from' => "{$who} hat ".($e->data['ticket'] ?? '–').' hierher zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) übernommen)',
                         'sender_blocked' => "{$who} hat ".($e->data['entry'] ?? 'den Absender').' für dieses Postfach gesperrt',
                         'anonymized' => "{$who}: Kontaktdaten auf Wunsch gelöscht (Datenschutz)",
+                        'snoozed' => "{$who} hat das Ticket zurückgestellt bis ".(isset($e->data['until']) ? \Illuminate\Support\Carbon::parse($e->data['until'])->timezone($tz)->format('d.m.Y H:i').' Uhr' : '–'),
+                        'unsnoozed' => match ($e->data['reason'] ?? 'manual') {
+                            'due' => 'Wiedervorlage: Ticket ist wieder fällig',
+                            'reply' => 'Wiedervorlage beendet, weil der Kunde geantwortet hat',
+                            default => "{$who} hat die Wiedervorlage aufgehoben",
+                        },
                         'team' => "{$who}: Team ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'category' => "{$who}: Kategorie ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'priority' => "{$who}: Priorität → ".(\App\Enums\TicketPriority::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),
@@ -163,6 +169,9 @@
                 <dt>Priorität</dt><dd><x-filament::badge :color="$ticket->priority->getColor()" style="display:inline-flex">{{ $ticket->priority->getLabel() }}</x-filament::badge></dd>
                 <dt>Bearbeiter</dt><dd>{{ $ticket->assignee?->name ?? '– niemand –' }}</dd>
                 <dt>Team</dt><dd>{{ $ticket->team?->name ?? '–' }}</dd>
+                @if ($ticket->isSnoozed())
+                    <dt>Wiedervorlage</dt><dd><x-filament::badge color="warning" style="display:inline-flex">zurückgestellt bis {{ $ticket->snoozed_until->timezone($tz)->format('d.m.Y H:i') }}</x-filament::badge></dd>
+                @endif
                 <dt>Eingang</dt><dd>{{ $ticket->channel === 'api' ? 'Anwendung (API)' : 'E-Mail' }}</dd>
                 <dt>Postfach</dt><dd>{{ $ticket->mailbox?->email ?? '–' }}</dd>
                 <dt>Erstellt</dt><dd>{{ $ticket->created_at?->timezone($tz)->format('d.m.Y H:i') }}</dd>

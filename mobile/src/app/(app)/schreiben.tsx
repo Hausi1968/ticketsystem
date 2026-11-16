@@ -203,6 +203,24 @@ export default function Write() {
             placeholderTextColor={colors.muted}
             autoFocus
           />
+          {!isReply && (
+            <View style={{ marginTop: 6 }}>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Kollegen erwähnen: antippen fügt @Name ein, der Kollege bekommt einen Hinweis.</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {(options?.users ?? [])
+                  .filter((u) => u.tenant_ids.includes(ticket.tenant.id))
+                  .slice(0, 12)
+                  .map((u) => (
+                    <Pressable
+                      key={u.id}
+                      onPress={() => setBody((b) => (b && !b.endsWith(' ') && !b.endsWith('\n') ? b + ' ' : b) + '@' + u.name + ' ')}
+                      style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ fontSize: 13, color: BRAND, fontWeight: '600' }}>@{u.name}</Text>
+                    </Pressable>
+                  ))}
+              </View>
+            </View>
+          )}
 
           <Label>Anhänge</Label>
           <View style={s.attachRow}>

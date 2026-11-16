@@ -99,6 +99,7 @@ class InboundMailProcessor
                     $this->notifier->ticketCreated($ticket);
                     $this->acknowledgement->queueFor($ticket, $email);
                 } else {
+                    $ticket->unsnooze(null, 'reply'); // Kunde hat geantwortet: Wiedervorlage ist hinfällig
                     $this->notifier->customerReplied($ticket);
                 }
 

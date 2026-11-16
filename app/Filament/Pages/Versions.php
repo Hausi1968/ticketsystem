@@ -3,8 +3,10 @@
 namespace App\Filament\Pages;
 
 use App\Models\AgentToken;
+use App\Security\SecurityLog;
 use App\Support\Version;
 use BackedEnum;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
@@ -34,6 +36,24 @@ class Versions extends Page
             'devices' => $this->devices($user->is_admin),
             'showUser' => (bool) $user->is_admin,
         ];
+    }
+
+    /** Gerät abmelden: Administratoren jedes, Mitarbeiter nur die eigenen */
+    public function revokeDevice(int $id): void
+    {
+        $user = auth()->user();
+        $token = AgentToken::query()->with('user')
+            ->when(! $user->is_admin, fn ($query) => $query->where('user_id', $user->getKey()))
+            ->find($id);
+
+        if (! $token) {
+            return;
+        }
+
+        SecurityLog::record('device_revoked', $token->user, ['device' => $token->name]);
+        $token->delete();
+        Notification::make()->success()->title('Gerät abgemeldet')
+            ->body('Die App auf diesem Gerät muss sich neu anmelden.')->send();
     }
 
     /** Höchste App-Version, die gerade benutzt wird – zum Vergleich mit dem eigenen Gerät */

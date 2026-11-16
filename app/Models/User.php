@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MembershipRole;
+use App\Security\SecurityLog;
 use Database\Factories\UserFactory;
 use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthentication;
 use Filament\Auth\MultiFactor\App\Contracts\HasAppAuthenticationRecovery;
@@ -45,6 +46,31 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::created(fn (User $user) => SecurityLog::record('user_created', $user, ['admin' => (bool) $user->is_admin]));
+
+        static::updated(function (User $user) {
+            if ($user->wasChanged('password')) {
+                // Neues Passwort: alle App-Anmeldungen beenden, die Geräte müssen sich neu anmelden
+                $devices = $user->agentTokens()->count();
+                $user->agentTokens()->delete();
+                SecurityLog::record('password_changed', $user, ['abgemeldete_geraete' => $devices]);
+            }
+
+            $changes = collect(['email', 'is_admin', 'active', 'name'])->filter(fn ($field) => $user->wasChanged($field))
+                ->mapWithKeys(fn ($field) => [$field => $user->{$field}])->all();
+            if ($changes) {
+                SecurityLog::record('user_changed', $user, $changes);
+            }
+        });
+    }
+
+    public function agentTokens(): HasMany
+    {
+        return $this->hasMany(AgentToken::class);
+    }
+
     /** Ereignisse, zu denen Mitarbeiter benachrichtigt werden. In der Oberfläche immer, per E-Mail nach Wahl. */
     public const NOTIFICATION_EVENTS = [
         'new_ticket' => 'Neues Ticket in meinen Mandanten bzw. Teams',
@@ -52,6 +78,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         'customer_reply' => 'Kunde hat auf mein Ticket geantwortet',
         'sla_warning' => 'Frist (SLA) eines Tickets läuft bald ab',
         'sla_breach' => 'Frist (SLA) eines Tickets ist überschritten',
+        'team_assigned' => 'Ein Ticket wurde einem meiner Teams zugeordnet',
+        'mention' => 'Ein Kollege hat mich in einer Notiz erwähnt',
+        'snooze_due' => 'Wiedervorlage: ein zurückgestelltes Ticket ist wieder fällig',
     ];
 
     public function wantsMailFor(string $event): bool

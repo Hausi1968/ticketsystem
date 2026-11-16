@@ -137,6 +137,7 @@ class ApiTicketService
                 $ticket->changeStatus(TicketStatus::OPEN);
             }
 
+            $ticket->unsnooze(null, 'reply');
             $this->notifier->customerReplied($ticket);
 
             return [$ticket, false];

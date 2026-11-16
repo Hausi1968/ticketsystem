@@ -17,11 +17,13 @@ use App\Models\TicketMessage;
 use App\Models\TicketPresence;
 use App\Models\TicketStatus;
 use App\Models\User;
+use App\Tickets\Mentions;
 use App\Tickets\Presence;
 use App\Tickets\TicketMerger;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
@@ -29,6 +31,7 @@ use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Utilities\Get;
@@ -37,6 +40,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
@@ -148,6 +152,8 @@ class ViewTicket extends ViewRecord
             TicketsTable::takeAction()->record($this->record)->after(fn () => $this->refreshRecord()),
             ActionGroup::make([
                 $this->assignAction(),
+                $this->snoozeAction(),
+                $this->unsnoozeAction(),
                 $this->statusAction(),
                 $this->categoryAction(),
                 $this->priorityAction(),
@@ -233,13 +239,17 @@ class ViewTicket extends ViewRecord
             ->modalWidth('2xl')
             ->modalSubmitActionLabel('Speichern')
             ->schema([
-                Textarea::make('body')->label('Notiz')->required()->rows(6)->autosize(),
+                Textarea::make('body')->label('Notiz')->required()->rows(6)->autosize()
+                    ->helperText('Mit @Name im Text (z. B. @Anna) bekommt der Kollege einen Hinweis.'),
+                Select::make('notify_user_ids')->label('Kollegen benachrichtigen')->multiple()->searchable()
+                    ->options(fn () => Mentions::candidates($this->record)->where('id', '!=', auth()->id())->pluck('name', 'id'))
+                    ->placeholder('optional: Kollegen auswählen'),
                 FileUpload::make('files')->label('Anhänge')->multiple()->storeFiles(false)->maxSize(100 * 1024),
                 TextInput::make('minutes')->label('Zeit (Minuten)')->numeric()->integer()->minValue(0)->maxValue(1440)
                     ->placeholder('optional, z. B. 15')->helperText('Wird in der Zeiterfassung des Tickets gebucht.'),
             ])
             ->action(function (array $data) {
-                $note = app(ReplySender::class)->note($this->record, auth()->user(), $data['body'], $this->storeUploads($data['files'] ?? []));
+                $note = app(ReplySender::class)->note($this->record, auth()->user(), $data['body'], $this->storeUploads($data['files'] ?? []), $data['notify_user_ids'] ?? []);
                 $this->record->logTime((int) ($data['minutes'] ?? 0), auth()->user(), message: $note);
                 Notification::make()->success()->title('Notiz gespeichert')->send();
                 $this->refreshRecord();
@@ -268,6 +278,58 @@ class ViewTicket extends ViewRecord
                 $this->record->assignTo($data['assignee_id'] ? User::find($data['assignee_id']) : null, auth()->user());
                 $this->record->changeTeam($data['team_id'] ? Team::query()->find($data['team_id']) : null, auth()->user());
                 Notification::make()->success()->title('Zuweisung gespeichert')->send();
+                $this->refreshRecord();
+            });
+    }
+
+    /** Wiedervorlage: Ticket bis zu einem Zeitpunkt aus den Arbeitslisten nehmen */
+    private function snoozeAction(): Action
+    {
+        $tz = fn () => $this->record->tenant->timezone ?: 'Europe/Berlin';
+
+        return Action::make('snooze')->label('Zurückstellen (Wiedervorlage)')->icon(Heroicon::OutlinedClock)
+            ->visible(fn () => $this->canWrite() && ! $this->record->isClosed())
+            ->modalDescription('Das Ticket verschwindet bis dahin aus „Meine“, „Unzugewiesen“ und „Meine Teams“. Zum Zeitpunkt kommt es zurück und du bekommst einen Hinweis. Antwortet der Kunde vorher, kommt es sofort zurück.')
+            ->schema([
+                ToggleButtons::make('preset')->label('Bis')->inline()->live()->default('tomorrow')
+                    ->options([
+                        'tomorrow' => 'Morgen 8 Uhr',
+                        'days3' => 'In 3 Tagen',
+                        'week' => 'In 1 Woche',
+                        'custom' => 'Eigener Zeitpunkt',
+                    ]),
+                DateTimePicker::make('until')->label('Zeitpunkt')->seconds(false)->timezone($tz())
+                    ->minDate(fn () => now())->required(fn (Get $get) => $get('preset') === 'custom')
+                    ->visible(fn (Get $get) => $get('preset') === 'custom'),
+            ])
+            ->action(function (array $data) use ($tz) {
+                $until = self::snoozeTime($data['preset'] ?? 'custom', $data['until'] ?? null, $tz());
+                $this->record->snooze($until, auth()->user());
+                Notification::make()->success()->title('Zurückgestellt bis '.$until->copy()->setTimezone($tz())->format('d.m.Y H:i').' Uhr')->send();
+                $this->refreshRecord();
+            });
+    }
+
+    /** Zeitpunkt aus der Schnellauswahl (immer 8 Uhr in der Zeitzone des Mandanten) oder aus der eigenen Eingabe */
+    public static function snoozeTime(string $preset, mixed $custom, string $tz): Carbon
+    {
+        $morning = fn (int $days) => Carbon::now($tz)->addDays($days)->setTime(8, 0)->utc();
+
+        return match ($preset) {
+            'tomorrow' => $morning(1),
+            'days3' => $morning(3),
+            'week' => $morning(7),
+            default => Carbon::parse($custom),
+        };
+    }
+
+    private function unsnoozeAction(): Action
+    {
+        return Action::make('unsnooze')->label('Wiedervorlage aufheben')->icon(Heroicon::OutlinedBellSlash)
+            ->visible(fn () => $this->canWrite() && $this->record->isSnoozed())
+            ->action(function () {
+                $this->record->unsnooze(auth()->user());
+                Notification::make()->success()->title('Wiedervorlage aufgehoben')->send();
                 $this->refreshRecord();
             });
     }

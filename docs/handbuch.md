@@ -437,8 +437,10 @@ Ob er läuft, zeigt die Kachel **Cronjob** auf der Übersicht. Einrichtung und U
 
 ### Mitarbeiter-App verteilen (Admin)
 
-Neue APK-Versionen werden über GitHub (Workflow „App bauen“) bei Expo gebaut und den Mitarbeitern als Datei
-gegeben. Kleinere Änderungen kommen als automatisches Update in die installierte App.
+Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die Datei geht dann an die Mitarbeiter.
+Änderungen nur am Programmcode der App (ohne neue Berechtigungen oder Module) veröffentlicht
+**App-Update veröffentlichen**. Die installierte App lädt das Update beim nächsten Start selbst, unter
+**Konto** steht der Stand. Beide Abläufe werden nur von Hand gestartet.
 
 ## 12. Änderungen an diesem Handbuch
 

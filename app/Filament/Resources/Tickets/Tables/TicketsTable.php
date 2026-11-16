@@ -31,6 +31,7 @@ class TicketsTable
     {
         return $table
             ->defaultSort('updated_at', 'desc')
+            ->searchPlaceholder('Alle Tickets durchsuchen (Text, Absender, Nummer)')
             ->poll('30s')
             ->recordUrl(fn (Ticket $record) => route('filament.app.resources.tickets.view', $record))
             ->columns([

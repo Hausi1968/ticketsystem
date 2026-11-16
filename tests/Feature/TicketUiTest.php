@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MessageType;
+use App\Enums\StatusBehaviour;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\TicketResource;
@@ -223,4 +224,20 @@ it('findet über Nachrichtentexte keine Tickets fremder Mandanten', function () 
         ->assertCanSeeTableRecords([$this->ticketA])
         ->assertCanNotSeeTableRecords([$this->ticketB]);
     expect(TicketResource::getGlobalSearchResults('Kisten'))->toHaveCount(1);
+});
+
+it('sucht unabhängig vom Reiter auch in wartenden und geschlossenen Tickets', function () {
+    $this->actingAs($this->agentA);
+    app(TenantContext::class)->runFor($this->a, function () {
+        $this->ticketA->assignTo($this->agentA);
+        $this->ticketA->changeStatus(TicketStatus::query()->where('behaviour', StatusBehaviour::Closed)->firstOrFail());
+    });
+    $closed = $this->ticketA->fresh();
+
+    Livewire::test(ListTickets::class, ['activeTab' => 'mine'])
+        ->assertCanNotSeeTableRecords([$closed])
+        ->searchTable('Kisten')
+        ->assertCanSeeTableRecords([$closed])
+        ->searchTable('')
+        ->assertCanNotSeeTableRecords([$closed]);
 });

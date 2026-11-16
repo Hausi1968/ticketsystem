@@ -7,6 +7,7 @@ use App\Enums\TicketPriority;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Outbound\ReplySender;
+use App\Models\CannedResponse;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
@@ -20,6 +21,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\View;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
@@ -83,6 +86,19 @@ class ViewTicket extends ViewRecord
             ->modalWidth('3xl')
             ->modalSubmitActionLabel('Senden')
             ->schema([
+                Select::make('canned')->label('Textbaustein einfügen')->placeholder('– keiner –')
+                    ->options(fn () => CannedResponse::query()->forTenant((int) $this->record->tenant_id)
+                        ->where('active', true)->orderBy('sort')->orderBy('title')->pluck('title', 'id'))
+                    ->visible(fn () => CannedResponse::query()->forTenant((int) $this->record->tenant_id)->where('active', true)->exists())
+                    ->searchable()->live()->dehydrated(false)
+                    ->afterStateUpdated(function (?string $state, Get $get, Set $set) {
+                        $canned = $state ? CannedResponse::query()->forTenant((int) $this->record->tenant_id)->find($state) : null;
+                        if ($canned) {
+                            $current = rtrim((string) $get('body'));
+                            $set('body', ($current !== '' ? $current."\n\n" : '').$canned->renderFor($this->record, auth()->user()));
+                        }
+                        $set('canned', null);
+                    }),
                 Textarea::make('body')->label('Nachricht')->required()->rows(10)->autosize(),
                 TagsInput::make('cc')->label('CC')->placeholder('weitere E-Mail-Adressen')
                     ->nestedRecursiveRules(['email'])

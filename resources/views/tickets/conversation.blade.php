@@ -44,7 +44,10 @@
                         'assigned' => $e->data['to'] ?? null
                             ? "{$who} hat das Ticket ".($userNames[$e->data['to']] ?? 'jemandem').' zugewiesen'
                             : "{$who} hat die Zuweisung entfernt",
-                        'status' => "{$who}: Status ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
+                        'status' => "{$who}: Status ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–')
+                            .(isset($e->data['auto']) ? " (automatisch nach {$e->data['auto']} Tagen)" : ''),
+                        'reminder' => 'Erinnerung an den Kunden verschickt',
+                        'anonymized' => "{$who}: Kontaktdaten auf Wunsch gelöscht (Datenschutz)",
                         'category' => "{$who}: Kategorie ".($e->data['from'] ?? '–').' → '.($e->data['to'] ?? '–'),
                         'priority' => "{$who}: Priorität → ".(\App\Enums\TicketPriority::tryFrom($e->data['to'] ?? '')?->getLabel() ?? '–'),
                         'sla_breach' => 'Frist überschritten: '.(\App\Models\SlaPolicy::METRICS[$e->data['metric'] ?? ''] ?? 'SLA'),

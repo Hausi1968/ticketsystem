@@ -185,9 +185,14 @@ class ReplySender
         return $email;
     }
 
-    private function mailboxFor(Ticket $ticket): Mailbox
+    /** Fest eingestelltes Antwort-Postfach des Mandanten (getrennt nach E-Mail und App), sonst das Postfach des Tickets. */
+    public function mailboxFor(Ticket $ticket): Mailbox
     {
-        return $ticket->mailbox
+        $configured = $ticket->tenant?->setting($ticket->channel === 'api' ? 'reply_mailbox_api' : 'reply_mailbox_email');
+
+        return ($configured ? Mailbox::query()->withoutGlobalScopes()->where('tenant_id', $ticket->tenant_id)
+            ->where('active', true)->find($configured) : null)
+            ?? $ticket->mailbox
             ?? Mailbox::query()->where('tenant_id', $ticket->tenant_id)->where('active', true)->orderBy('id')->first()
             ?? throw new RuntimeException('Für diesen Mandanten ist kein aktives Postfach eingerichtet. Bitte unter Verwaltung → Postfächer eines anlegen, über das die Antworten verschickt werden.');
     }

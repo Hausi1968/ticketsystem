@@ -17,6 +17,9 @@ return [
         'password' => env('ANLIEGO_INITIAL_ADMIN_PASSWORD'),
     ],
 
+    // Wie viele nächtliche Datenbanksicherungen aufbewahrt werden
+    'backup_keep' => env('ANLIEGO_BACKUP_KEEP', 14),
+
     // Nach wie vielen Minuten ohne Cronjob-Lauf eine Warnung angezeigt wird
     'cron_warning_minutes' => env('ANLIEGO_CRON_WARNING_MINUTES', 10),
 

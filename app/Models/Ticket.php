@@ -36,6 +36,8 @@ class Ticket extends Model
             'last_agent_message_at' => 'datetime',
             'first_response_at' => 'datetime',
             'closed_at' => 'datetime',
+            'waiting_since' => 'datetime',
+            'reminded_at' => 'datetime',
             'sla' => 'array',
             'sla_due_at' => 'datetime',
             'sla_next_check_at' => 'datetime',
@@ -190,7 +192,8 @@ class Ticket extends Model
         }
     }
 
-    public function changeStatus(TicketStatus|string $status, ?User $actor = null): void
+    /** @param  array<string, mixed>  $note  zusätzliche Angaben fürs Protokoll, z. B. ['auto' => 7] */
+    public function changeStatus(TicketStatus|string $status, ?User $actor = null, array $note = []): void
     {
         $status = is_string($status) ? TicketStatus::system($status) : $status;
 
@@ -201,9 +204,12 @@ class Ticket extends Model
         $previous = $this->status;
         $this->status()->associate($status);
         $this->closed_at = $status->closes() ? ($previous?->closes() ? $this->closed_at : now()) : null;
+        // Für Erinnerung und automatisches Lösen: seit wann wartet das Ticket auf den Kunden?
+        $this->waiting_since = $status->system_key === TicketStatus::WAITING ? now() : null;
+        $this->reminded_at = null;
 
         $this->save();
-        $this->logEvent('status', $actor, ['from' => $previous?->name, 'to' => $status->name]);
+        $this->logEvent('status', $actor, ['from' => $previous?->name, 'to' => $status->name] + $note);
     }
 
     public function changeCategory(?TicketCategory $category, ?User $actor = null): void

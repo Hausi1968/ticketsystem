@@ -82,7 +82,7 @@ IONOS → *Hosting* → *Cronjobs* → *Cronjob anlegen*:
 
 - Typ: *Befehl / Skript*
 - Befehl: `/usr/bin/php8.4-cli /PFAD/ZUM/WEBSPACE/anliego/artisan schedule:run`
-- Intervall: **jede Minute** (oder das kürzeste angebotene Intervall)
+- Intervall: **jede Minute** – bei „Erweitert“ in alle fünf Felder `*` eintragen. Eine Zahl im Feld *Minuten* (z. B. `1`) heißt „einmal pro Stunde zur Minute 1“; dann laufen Mailabruf und Automatik nur stündlich und die nächtliche Sicherung gar nicht. Geht jede Minute nicht, `*/5` eintragen.
 
 Den vollständigen Pfad zum Webspace zeigt IONOS bei der Einrichtung des Cronjobs bzw. per SSH mit `pwd` an. Ob der PHP-Befehl `php8.4-cli` heißt, lässt sich per SSH mit `ls /usr/bin/php*` prüfen.
 

@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Tenants\Schemas;
 
+use App\Console\Commands\RunAutomation;
+use App\Models\Mailbox;
+use App\Models\Tenant;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
-use App\Console\Commands\RunAutomation;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
@@ -55,6 +57,24 @@ class TenantForm
                         ->helperText('Leer = Standardtext (siehe Platzhalter im Feld). Platzhalter: {name}, {nummer}, {betreff}, {tage}, {mandant}, {absender}.')
                         ->visible(fn (Get $get) => (int) $get('settings.reminder_days') > 0),
                 ]),
+
+            Section::make('Antworten verschicken über')
+                ->description('Aus welchem Postfach Antworten, Eingangsbestätigungen und Erinnerungen an den Kunden gehen.')
+                ->columns(2)->visibleOn('edit')->schema([
+                    Select::make('settings.reply_mailbox_email')->label('Bei Tickets aus E-Mails')
+                        ->placeholder('Postfach, in dem die E-Mail ankam')
+                        ->options(fn (?Tenant $record) => self::mailboxOptions($record)),
+                    Select::make('settings.reply_mailbox_api')->label('Bei Meldungen aus der App / Mitgliederverwaltung')
+                        ->placeholder('Postfach des API-Schlüssels')
+                        ->options(fn (?Tenant $record) => self::mailboxOptions($record)),
+                ]),
         ]);
+    }
+
+    /** @return array<int, string> */
+    private static function mailboxOptions(?Tenant $record): array
+    {
+        return $record ? Mailbox::query()->withoutGlobalScopes()->where('tenant_id', $record->getKey())
+            ->where('active', true)->orderBy('email')->pluck('email', 'id')->all() : [];
     }
 }

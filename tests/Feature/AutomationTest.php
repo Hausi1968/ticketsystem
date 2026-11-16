@@ -98,3 +98,20 @@ it('zählt nach einer Kundenantwort und neuer Rückfrage neu', function () {
     $this->artisan('anliego:automation');
     expect($this->smtp->sent)->toBe([]);
 });
+
+it('verschickt Antworten über das beim Mandanten eingestellte Postfach', function () {
+    $other = mailboxFor($this->tenant, ['email' => 'service@firma-a.de']);
+    $this->tenant->update(['settings' => ['reply_mailbox_email' => $other->getKey()]]);
+
+    app(TenantContext::class)->runFor($this->tenant, fn () => app(ReplySender::class)
+        ->reply($this->ticket->fresh(), $this->agent, 'Bitte noch die Adresse.'));
+
+    expect($this->smtp->last()->getFrom()[0]->getAddress())->toBe('service@firma-a.de');
+
+    // Ein inaktives oder fremdes Postfach wird ignoriert
+    $other->update(['active' => false]);
+    app(TenantContext::class)->runFor($this->tenant, fn () => app(ReplySender::class)
+        ->reply($this->ticket->fresh(), $this->agent, 'Danke.'));
+
+    expect($this->smtp->last()->getFrom()[0]->getAddress())->toBe('auftrag@firma-a.de');
+});

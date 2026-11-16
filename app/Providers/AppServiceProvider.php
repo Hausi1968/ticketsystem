@@ -24,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('anliego-api', fn (Request $request) => Limit::perMinute(60)
             ->by('api-key:'.($request->attributes->get('api_key')?->getKey() ?? $request->ip())));
 
+        RateLimiter::for('anliego-agent', fn (Request $request) => Limit::perMinute(240)
+            ->by('agent:'.($request->user()?->getKey() ?? $request->ip())));
+
         // Listener in app/Listeners werden automatisch registriert.
     }
 }

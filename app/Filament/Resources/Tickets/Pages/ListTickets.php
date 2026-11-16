@@ -6,6 +6,7 @@ use App\Enums\StatusBehaviour;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Models\SavedView;
 use App\Models\Ticket;
+use App\Tickets\TicketTabs;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -75,14 +76,7 @@ class ListTickets extends ListRecords
             return $query;
         }
 
-        return match ($tab) {
-            'mine' => $query->where('assignee_id', auth()->id())->unresolved(),
-            'unassigned' => $query->whereNull('assignee_id')->unresolved(),
-            'open' => $query->withBehaviour(StatusBehaviour::Open),
-            'pending' => $query->withBehaviour(StatusBehaviour::Pending),
-            'closed' => $query->withBehaviour(StatusBehaviour::Closed),
-            default => $query,
-        };
+        return TicketTabs::apply($query, $tab, auth()->user());
     }
 
     /** Bei einer Suche gilt der Reiter nicht: gesucht wird in allen Tickets, auch wartenden und geschlossenen. */

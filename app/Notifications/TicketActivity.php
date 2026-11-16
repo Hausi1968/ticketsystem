@@ -2,7 +2,9 @@
 
 namespace App\Notifications;
 
+use App\Models\AgentToken;
 use App\Models\User;
+use App\Notifications\Channels\ExpoPushChannel;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
@@ -25,7 +27,14 @@ class TicketActivity extends Notification implements ShouldQueue
 
     public function via(User $notifiable): array
     {
-        return $notifiable->wantsMailFor($this->event) ? ['database', 'mail'] : ['database'];
+        $channels = $notifiable->wantsMailFor($this->event) ? ['database', 'mail'] : ['database'];
+
+        // Push in die Mitarbeiter-App, sobald ein Gerät angemeldet ist und Push erlaubt hat
+        if (AgentToken::query()->where('user_id', $notifiable->getKey())->whereNotNull('push_token')->exists()) {
+            $channels[] = ExpoPushChannel::class;
+        }
+
+        return $channels;
     }
 
     public function title(): string

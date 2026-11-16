@@ -4,7 +4,7 @@ namespace App\Mail\Outbound;
 
 use App\Enums\MessageType;
 use App\Jobs\DeliverTicketMessage;
-use App\Models\Attachment;
+use App\Mail\Inbound\MailFetcher;
 use App\Models\Mailbox;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -131,9 +131,11 @@ class ReplySender
 
         try {
             $mailbox = $this->mailboxFor($ticket);
-            $this->transports->for($mailbox)->send($this->buildEmail($message, $mailbox));
+            $email = $this->buildEmail($message, $mailbox);
+            $this->transports->for($mailbox)->send($email);
 
             $message->forceFill(['delivery_status' => 'sent', 'delivery_error' => null, 'sent_at' => now()])->save();
+            $this->storeSentCopy($mailbox, $email);
 
             return true;
         } catch (Throwable $e) {
@@ -141,6 +143,21 @@ class ReplySender
             $message->forceFill(['delivery_status' => 'failed', 'delivery_error' => mb_substr($e->getMessage(), 0, 2000)])->save();
 
             return false;
+        }
+    }
+
+    /** Kopie in den Gesendet-Ordner des Postfachs legen, damit die Antwort z. B. in Outlook sichtbar ist. */
+    private function storeSentCopy(Mailbox $mailbox, Email $email): void
+    {
+        if (! $mailbox->sent_folder || ! $mailbox->imap_host) {
+            return;
+        }
+
+        try {
+            app(MailFetcher::class)->append($mailbox, $mailbox->sent_folder, $email->toString());
+        } catch (Throwable $e) {
+            // Der Versand selbst hat geklappt; eine fehlende Kopie darf ihn nicht als fehlgeschlagen melden
+            Log::warning('Kopie in „Gesendet“ fehlgeschlagen', ['mailbox' => $mailbox->getKey(), 'error' => $e->getMessage()]);
         }
     }
 
@@ -158,6 +175,9 @@ class ReplySender
         }
         foreach ($message->cc ?? [] as $recipient) {
             $email->addCc(new Address($recipient['email'], (string) ($recipient['name'] ?? '')));
+        }
+        if ($mailbox->sent_copy_bcc) {
+            $email->addBcc($mailbox->sent_copy_bcc);
         }
 
         $headers = $email->getHeaders();
@@ -185,16 +205,23 @@ class ReplySender
         return $email;
     }
 
-    /** Fest eingestelltes Antwort-Postfach des Mandanten (getrennt nach E-Mail und App), sonst das Postfach des Tickets. */
+    /**
+     * Absender-Postfach: fest eingestelltes Antwort-Postfach des Mandanten (getrennt nach E-Mail und App),
+     * sonst das Postfach des Tickets, sonst das erste versandfähige Postfach des Mandanten.
+     * Postfächer „nur abrufen“ versenden nie.
+     */
     public function mailboxFor(Ticket $ticket): Mailbox
     {
-        $configured = $ticket->tenant?->setting($ticket->channel === 'api' ? 'reply_mailbox_api' : 'reply_mailbox_email');
+        $sendable = fn () => Mailbox::query()->withoutGlobalScopes()->where('tenant_id', $ticket->tenant_id)
+            ->where('active', true)->where('usage', '!=', 'fetch');
 
-        return ($configured ? Mailbox::query()->withoutGlobalScopes()->where('tenant_id', $ticket->tenant_id)
-            ->where('active', true)->find($configured) : null)
-            ?? $ticket->mailbox
-            ?? Mailbox::query()->where('tenant_id', $ticket->tenant_id)->where('active', true)->orderBy('id')->first()
-            ?? throw new RuntimeException('Für diesen Mandanten ist kein aktives Postfach eingerichtet. Bitte unter Verwaltung → Postfächer eines anlegen, über das die Antworten verschickt werden.');
+        $configured = $ticket->tenant?->setting($ticket->channel === 'api' ? 'reply_mailbox_api' : 'reply_mailbox_email');
+        $own = $ticket->mailbox?->active && $ticket->mailbox->canSend() ? $ticket->mailbox : null;
+
+        return ($configured ? $sendable()->find($configured) : null)
+            ?? $own
+            ?? $sendable()->orderBy('id')->first()
+            ?? throw new RuntimeException('Für diesen Mandanten ist kein aktives Postfach zum Versenden eingerichtet. Bitte unter Verwaltung → Postfächer eines anlegen (Verwendung „Abrufen und versenden“ oder „Nur versenden“).');
     }
 
     private function subjectFor(Ticket $ticket): string

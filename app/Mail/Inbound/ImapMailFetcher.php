@@ -64,6 +64,19 @@ class ImapMailFetcher implements MailFetcher
         }
     }
 
+    public function append(Mailbox $mailbox, string $folder, string $raw): void
+    {
+        $client = $this->connect($mailbox);
+
+        try {
+            $target = $client->getFolderByPath($folder)
+                ?? throw new RuntimeException("Ordner „{$folder}“ nicht gefunden.");
+            $target->appendMessage($raw, ['\\Seen']);
+        } finally {
+            $client->disconnect();
+        }
+    }
+
     private function connect(Mailbox $mailbox): Client
     {
         $client = (new ClientManager)->make([

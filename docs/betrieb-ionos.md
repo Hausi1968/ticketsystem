@@ -113,9 +113,24 @@ Wichtig:
 
 - Anliego holt nur **ungelesene** E-Mails. Wer das Postfach zusätzlich in Outlook öffnet, sollte dort nichts als gelesen markieren, bevor Anliego abgerufen hat (oder Anliego bekommt ein eigenes Postfach bzw. eine Weiterleitung).
 - Abwesenheitsnotizen, Unzustellbarkeitsmeldungen und E-Mails aus den eigenen Postfächern werden erkannt und erzeugen kein Ticket.
-- Antworten gehen über das SMTP des Postfachs, mit der Ticketnummer im Betreff (z. B. `[#MUS-1000]`). Antwortet der Kunde, landet seine E-Mail wieder im selben Ticket.
+- Antworten gehen über das SMTP des Postfachs (oder des beim Mandanten unter *Antworten verschicken über* gewählten Postfachs), mit der Ticketnummer im Betreff (z. B. `[#MUS-1000]`). Antwortet der Kunde, landet seine E-Mail wieder im selben Ticket.
 - Anhänge bis 100 MB: Dafür liegt `public/.user.ini` bei. Falls IONOS die Werte nicht übernimmt, `upload_max_filesize` und `post_max_size` im IONOS-Kundenbereich unter *PHP-Einstellungen* erhöhen.
 - **Eingangsbestätigung:** Je Postfach einschaltbar, der Text ist anpassbar (Platzhalter `{name}`, `{nummer}`, `{betreff}`, `{mandant}`, `{absender}`). Sie geht über das SMTP des Postfachs, sobald ein neues Ticket entsteht, auch bei Meldungen aus Anwendungen. Keine Bestätigung bekommen `noreply@`-Absender (z. B. Webshop-Bestellungen), Newsletter, die eigenen Postfächer, und jeder Kunde höchstens eine in 15 Minuten.
+
+### Abruf- und Absender-Adresse trennen
+
+Beispiel: Kunden schreiben an `info@verein.de`, das ist nur eine Weiterleitung auf `tickets@ionos-postfach.de`. Antworten sollen von `info@verein.de` kommen.
+
+1. Postfach `tickets@ionos-postfach.de` mit **Verwendung „Nur abrufen“** anlegen (nur IMAP nötig). Optional eine *Kategorie für neue Tickets*, z. B. „Allgemeine Anfrage“, um normale E-Mails von Fehlermeldungen zu trennen.
+2. Postfach `info@verein.de` mit **Verwendung „Nur versenden“** anlegen (nur SMTP nötig).
+3. Beim Mandanten unter *Antworten verschicken über* `info@verein.de` wählen. Ohne Auswahl nimmt Anliego das erste versandfähige Postfach des Mandanten.
+
+### Antworten im Gesendet-Ordner von Outlook
+
+Beim versendenden Postfach unter *Gesendete Antworten in Outlook*:
+
+- **Kopie ablegen im IMAP-Ordner**, z. B. `Gesendete Objekte` (IONOS) oder `Sent`: Jede Antwort wird nach dem Versand über IMAP dort abgelegt und erscheint in Outlook, wenn Outlook dieses Postfach per IMAP eingebunden hat. Dafür müssen beim Postfach auch die IMAP-Zugangsdaten stehen.
+- **Kopie (BCC) an**: Jede Antwort geht zusätzlich unsichtbar an diese Adresse, z. B. wenn das Konto kein IMAP mit Passwort erlaubt (Outlook.com/Microsoft 365). Die Kopie landet dort im Posteingang; eine Outlook-Regel kann sie in einen Ordner verschieben.
 
 ## 10. Benachrichtigungen für Mitarbeiter
 

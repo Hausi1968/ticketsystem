@@ -17,4 +17,7 @@ interface MailFetcher
 
     /** Prüft die IMAP-Verbindung; wirft eine Exception mit verständlicher Meldung bei Fehlern. */
     public function test(Mailbox $mailbox): string;
+
+    /** Legt eine versendete E-Mail (Rohtext) im angegebenen IMAP-Ordner als gelesen ab. */
+    public function append(Mailbox $mailbox, string $folder, string $raw): void;
 }

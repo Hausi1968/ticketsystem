@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MessageType;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\TicketResource;
@@ -187,4 +188,39 @@ it('sortiert die Ticketliste nach Kategorie, Status, Bearbeiter und Betreff', fu
         ->sortTable('status.name')->assertSuccessful()
         ->sortTable('assignee.name')->assertSuccessful()
         ->sortTable('number')->assertSuccessful();
+});
+
+it('findet Tickets über Texte in Nachrichten, Notizen und den Absender', function () {
+    $this->actingAs(memberOf($this->a, $this->b));
+    app(TenantContext::class)->runFor($this->a, fn () => $this->ticketA->messages()->create([
+        'tenant_id' => $this->a->id, 'type' => MessageType::Note, 'user_id' => $this->agentA->id,
+        'body_text' => 'Lieferung an den Musterweg 12',
+    ]));
+
+    Livewire::test(ListTickets::class, ['activeTab' => 'all'])
+        ->searchTable('musterweg')
+        ->assertCanSeeTableRecords([$this->ticketA])
+        ->assertCanNotSeeTableRecords([$this->ticketB])
+        ->searchTable('Kisten')
+        ->assertCanSeeTableRecords([$this->ticketA, $this->ticketB])
+        ->searchTable('Kisten Musterweg')
+        ->assertCanSeeTableRecords([$this->ticketA])
+        ->assertCanNotSeeTableRecords([$this->ticketB])
+        ->searchTable($this->ticketA->contact->email)
+        ->assertCanSeeTableRecords([$this->ticketA])
+        ->searchTable('Gibtsnicht')
+        ->assertCanNotSeeTableRecords([$this->ticketA, $this->ticketB]);
+
+    expect(TicketResource::getGlobalSearchResults('Musterweg'))->toHaveCount(1)
+        ->and(TicketResource::getGlobalSearchResults('Kisten'))->toHaveCount(2);
+});
+
+it('findet über Nachrichtentexte keine Tickets fremder Mandanten', function () {
+    $this->actingAs($this->agentA);
+
+    Livewire::test(ListTickets::class, ['activeTab' => 'all'])
+        ->searchTable('Kisten')
+        ->assertCanSeeTableRecords([$this->ticketA])
+        ->assertCanNotSeeTableRecords([$this->ticketB]);
+    expect(TicketResource::getGlobalSearchResults('Kisten'))->toHaveCount(1);
 });

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Teams\Tables;
 
+use App\Models\Team;
 use App\Models\Tenant;
 use Filament\Actions\EditAction;
 use Filament\Support\Colors\Color;
@@ -20,6 +21,8 @@ class TeamsTable
                     ->color(fn ($record) => Color::hex($record->tenant->color)),
                 TextColumn::make('name')->label('Name')->searchable()->sortable(),
                 TextColumn::make('users_count')->counts('users')->label('Mitglieder'),
+                TextColumn::make('assignment_mode')->label('Zuweisung')
+                    ->formatStateUsing(fn (?string $state) => str(Team::ASSIGNMENT_MODES[$state] ?? '–')->before(' (')),
             ])
             ->filters([
                 SelectFilter::make('tenant_id')->label('Mandant')

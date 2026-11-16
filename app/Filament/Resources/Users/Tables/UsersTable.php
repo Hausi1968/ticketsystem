@@ -17,6 +17,7 @@ class UsersTable
                 TextColumn::make('name')->label('Name')->searchable()->sortable(),
                 TextColumn::make('email')->label('E-Mail')->searchable(),
                 TextColumn::make('tenants.short_code')->label('Mandanten')->badge(),
+                TextColumn::make('teams.name')->label('Teams')->badge()->color('gray')->placeholder('–')->toggleable(),
                 IconColumn::make('is_admin')->label('Admin')->boolean(),
                 IconColumn::make('active')->label('Aktiv')->boolean(),
                 IconColumn::make('app_authentication_secret')->label('2FA')

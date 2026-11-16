@@ -6,6 +6,7 @@ use App\Agent\AgentPresenter;
 use App\Enums\MessageType;
 use App\Enums\TicketPriority;
 use App\Mail\Outbound\ReplySender;
+use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketPresence;
@@ -34,7 +35,7 @@ class TicketController
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $query = Ticket::query()->with(['tenant', 'status', 'category', 'assignee', 'contact'])->whereNull('merged_into_id');
+        $query = Ticket::query()->with(['tenant', 'status', 'category', 'assignee', 'team', 'contact'])->whereNull('merged_into_id');
         $search = trim((string) ($data['search'] ?? ''));
 
         if ($search !== '') {
@@ -59,6 +60,7 @@ class TicketController
             'counts' => [
                 'mine' => Ticket::query()->where('assignee_id', $request->user()->getKey())->unresolved()->count(),
                 'unassigned' => Ticket::query()->whereNull('assignee_id')->unresolved()->count(),
+                'teams' => TicketTabs::apply(Ticket::query(), 'teams', $request->user())->count(),
             ],
         ]);
     }
@@ -152,6 +154,12 @@ class TicketController
                 $assignee = ! empty($data['assignee_id']) ? User::query()->findOrFail($data['assignee_id']) : null;
                 abort_if($assignee && ! BulkEditor::canBeAssigned($assignee, $record), 422, "{$assignee?->name} betreut diesen Mandanten nicht.");
                 $record->assignTo($assignee, $user);
+                break;
+            case 'team':
+                $data = $request->validate(['team_id' => ['nullable', 'integer']]);
+                $team = ! empty($data['team_id']) ? Team::query()->findOrFail($data['team_id']) : null;
+                abort_if($team && (int) $team->tenant_id !== (int) $record->tenant_id, 422, 'Dieses Team gehört zu einem anderen Mandanten.');
+                $record->changeTeam($team, $user);
                 break;
             case 'status':
                 $data = $request->validate(['status_id' => ['required', 'integer']]);

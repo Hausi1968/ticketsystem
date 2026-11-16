@@ -10,6 +10,7 @@ use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Outbound\ReplySender;
 use App\Models\CannedResponse;
 use App\Models\CustomField;
+use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketMessage;
@@ -50,9 +51,13 @@ class ViewTicket extends ViewRecord
     /** Letzte Nachricht, die dieser Mitarbeiter gesehen hat – für die Warnung vor doppelter Antwort */
     public ?int $seenMessageId = null;
 
+    /** Sortierung des Verlaufs; Standard neueste oben, die Wahl gilt für die ganze Anmeldung */
+    public bool $newestFirst = true;
+
     public function mount(int|string $record): void
     {
         parent::mount($record);
+        $this->newestFirst = session('ticket_order', 'newest') !== 'oldest';
         $this->seenMessageId = $this->latestMessageId();
         app(Presence::class)->touch($this->record, auth()->user());
     }
@@ -67,6 +72,12 @@ class ViewTicket extends ViewRecord
         if (! $writing) {
             $this->seenMessageId = $this->latestMessageId();
         }
+    }
+
+    public function toggleOrder(): void
+    {
+        $this->newestFirst = ! $this->newestFirst;
+        session(['ticket_order' => $this->newestFirst ? 'newest' : 'oldest']);
     }
 
     private function latestMessageId(): ?int
@@ -124,6 +135,7 @@ class ViewTicket extends ViewRecord
             View::make('tickets.conversation')->viewData(fn () => [
                 'ticket' => $this->record->fresh(['tenant', 'status', 'category', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf', 'slaPolicy',
                     'messages.attachments', 'messages.user', 'events.user']),
+                'newestFirst' => $this->newestFirst,
             ]),
         ]);
     }
@@ -236,9 +248,13 @@ class ViewTicket extends ViewRecord
 
     private function assignAction(): Action
     {
-        return Action::make('assign')->label('Zuweisen')->icon(Heroicon::OutlinedUser)
+        return Action::make('assign')->label('Zuweisen (Team / Bearbeiter)')->icon(Heroicon::OutlinedUser)
             ->visible(fn () => $this->canWrite())
             ->schema([
+                Select::make('team_id')->label('Team')->placeholder('– kein Team –')
+                    ->default(fn () => $this->record->team_id)
+                    ->options(fn () => Team::query()->where('tenant_id', $this->record->tenant_id)->orderBy('name')->pluck('name', 'id'))
+                    ->helperText('Bleibt der Bearbeiter leer und verteilt das Team automatisch, bekommt das Ticket gleich ein Teammitglied.'),
                 Select::make('assignee_id')->label('Bearbeiter')->placeholder('– niemand –')
                     ->default(fn () => $this->record->assignee_id)
                     ->options(fn () => User::query()->where('active', true)
@@ -250,6 +266,7 @@ class ViewTicket extends ViewRecord
             ])
             ->action(function (array $data) {
                 $this->record->assignTo($data['assignee_id'] ? User::find($data['assignee_id']) : null, auth()->user());
+                $this->record->changeTeam($data['team_id'] ? Team::query()->find($data['team_id']) : null, auth()->user());
                 Notification::make()->success()->title('Zuweisung gespeichert')->send();
                 $this->refreshRecord();
             });

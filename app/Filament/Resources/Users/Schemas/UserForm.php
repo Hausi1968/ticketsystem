@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\MembershipRole;
+use App\Models\Team;
 use App\Models\Tenant;
+use App\Models\User;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -55,6 +58,31 @@ class UserForm
                                 ->required(),
                         ]),
                 ]),
+            Section::make('Teams')
+                ->description('Ein Mitarbeiter kann mehreren Teams angehören, auch bei verschiedenen Mandanten. Es zählen nur Teams der oben eingetragenen Mandanten.')
+                ->schema([
+                    CheckboxList::make('team_ids')->hiddenLabel()
+                        ->options(fn () => Team::query()->with('tenant')->orderBy('name')->get()
+                            ->mapWithKeys(fn (Team $t) => [$t->id => "{$t->name} ({$t->tenant->short_code})"]))
+                        ->columns(2)
+                        ->afterStateHydrated(fn (CheckboxList $component, ?User $record) => $component->state(
+                            $record ? $record->teams()->pluck('teams.id')->map(fn ($id) => (string) $id)->all() : []))
+                        ->dehydrated(false)
+                        ->saveRelationshipsUsing(fn (User $record, ?array $state) => self::syncTeams($record, $state ?? [])),
+                ]),
         ]);
+    }
+
+    /** Teams speichern; Zuweisungs-Einstellung bestehender Mitgliedschaften bleibt erhalten */
+    public static function syncTeams(User $user, array $teamIds): void
+    {
+        $tenantIds = $user->memberships()->pluck('tenant_id')->map(fn ($id) => (int) $id)->all();
+        $teams = Team::query()->withoutGlobalScopes()->whereIn('id', $teamIds)->whereIn('tenant_id', $tenantIds)->get();
+        $existing = $user->teams()->withoutGlobalScopes()->get()->keyBy('id');
+
+        $user->teams()->sync($teams->mapWithKeys(fn (Team $t) => [$t->getKey() => [
+            'tenant_id' => $t->tenant_id,
+            'receives_assignments' => (bool) ($existing->get($t->getKey())?->pivot->receives_assignments ?? true),
+        ]])->all());
     }
 }

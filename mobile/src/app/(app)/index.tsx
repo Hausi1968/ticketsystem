@@ -87,7 +87,7 @@ export default function Tickets() {
   const tenants = options?.tenants ?? [];
   const searching = query !== '';
   const label = (key: string, text: string) => {
-    const n = key === 'mine' ? counts?.mine : key === 'unassigned' ? counts?.unassigned : undefined;
+    const n = key === 'mine' ? counts?.mine : key === 'unassigned' ? counts?.unassigned : key === 'teams' ? counts?.teams : undefined;
     return n ? `${text} (${n})` : text;
   };
 

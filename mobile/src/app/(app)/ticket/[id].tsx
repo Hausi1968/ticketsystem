@@ -8,10 +8,14 @@ import { behaviourTone, dateTime, due, eventText, fileSize, minutes, priorityTon
 import { openAttachment } from '@/lib/files';
 import { Button, Card, colors, ErrorBox, Loading, Notice, Pill, Row, Screen } from '@/components/ui';
 import { SelectSheet, SelectOption, TimeSheet } from '@/components/SelectSheet';
+import { getItem, setItem } from '@/lib/storage';
 
 const POLL_MS = 15000;
 
-type Sheet = null | 'status' | 'priority' | 'category' | 'assignee' | 'time';
+type Sheet = null | 'status' | 'priority' | 'category' | 'assignee' | 'team' | 'time';
+
+/** Gemerkte Sortierung des Verlaufs (Standard: neueste oben) */
+const ORDER_KEY = 'anliego.verlauf.sortierung';
 
 export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,6 +26,17 @@ export default function TicketScreen() {
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [opening, setOpening] = useState<number | null>(null);
+  const [newestFirst, setNewestFirst] = useState(true);
+
+  useEffect(() => {
+    getItem(ORDER_KEY).then((v) => v === 'oldest' && setNewestFirst(false)).catch(() => {});
+  }, []);
+
+  const toggleOrder = () => {
+    const next = !newestFirst;
+    setNewestFirst(next);
+    setItem(ORDER_KEY, next ? 'newest' : 'oldest').catch(() => {});
+  };
 
   const load = useCallback(
     async (mode: 'initial' | 'refresh' | 'silent' = 'initial') => {
@@ -80,15 +95,16 @@ export default function TicketScreen() {
     }
   };
 
-  // Verlauf: Nachrichten und Ereignisse gemischt, neueste oben
+  // Verlauf: Nachrichten und Ereignisse gemischt, sortiert nach Wahl (Standard: neueste oben)
   const timeline = useMemo(() => {
     if (!ticket) return [];
     const rows: ({ kind: 'message'; at: string; item: Message } | { kind: 'event'; at: string; item: TicketEvent })[] = [
       ...ticket.messages.map((m) => ({ kind: 'message' as const, at: m.created_at, item: m })),
       ...ticket.events.map((e) => ({ kind: 'event' as const, at: e.created_at, item: e })),
     ];
-    return rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-  }, [ticket]);
+    const dir = newestFirst ? -1 : 1;
+    return rows.sort((a, b) => dir * (new Date(a.at).getTime() - new Date(b.at).getTime()));
+  }, [ticket, newestFirst]);
 
   const sheetOptions = useMemo((): { title: string; options: SelectOption[]; selected?: string | null } | null => {
     if (!ticket || !options || !sheet || sheet === 'time') return null;
@@ -121,6 +137,15 @@ export default function TicketScreen() {
           ],
           selected: ticket.assignee ? String(ticket.assignee.id) : '',
         };
+      case 'team':
+        return {
+          title: 'Team',
+          options: [
+            { value: '', label: 'Kein Team' },
+            ...(options.teams ?? []).filter((t) => t.tenant_id === ticket.tenant.id).map((t) => ({ value: String(t.id), label: t.name })),
+          ],
+          selected: ticket.team ? String(ticket.team.id) : '',
+        };
     }
   }, [sheet, ticket, options, me]);
 
@@ -129,6 +154,7 @@ export default function TicketScreen() {
     if (sheet === 'priority') act('priority', { priority: value });
     if (sheet === 'category') act('category', { category_id: value ? Number(value) : null });
     if (sheet === 'assignee') act('assign', { assignee_id: value ? Number(value) : null });
+    if (sheet === 'team') act('team', { team_id: value ? Number(value) : null });
   };
 
   if (!ticket) {
@@ -188,6 +214,7 @@ export default function TicketScreen() {
 
         <Card title="Bearbeiten" right={busy ? <ActivityIndicator color={BRAND} /> : undefined}>
           <Row icon="person-outline" title="Bearbeiter" subtitle={ticket.assignee?.name ?? 'Unzugewiesen'} onPress={ticket.can.edit ? () => setSheet('assignee') : undefined} />
+          <Row icon="people-outline" title="Team" subtitle={ticket.team?.name ?? 'Kein Team'} onPress={ticket.can.edit ? () => setSheet('team') : undefined} />
           <Row icon="flag-outline" title="Status" subtitle={ticket.status?.name ?? '–'} onPress={ticket.can.edit ? () => setSheet('status') : undefined} />
           <Row icon="alert-circle-outline" title="Priorität" subtitle={ticket.priority.label} onPress={ticket.can.edit ? () => setSheet('priority') : undefined} />
           <Row icon="pricetag-outline" title="Kategorie" subtitle={ticket.category?.name ?? 'Keine'} onPress={ticket.can.edit ? () => setSheet('category') : undefined} />
@@ -212,7 +239,13 @@ export default function TicketScreen() {
           </Card>
         )}
 
-        <Text style={s.section}>Verlauf · neueste zuerst</Text>
+        <View style={s.sectionRow}>
+          <Text style={s.section}>Verlauf</Text>
+          <Pressable onPress={toggleOrder} hitSlop={8} style={s.sortBtn} accessibilityRole="button">
+            <Ionicons name={newestFirst ? 'arrow-down' : 'arrow-up'} size={14} color={BRAND} />
+            <Text style={s.sortText}>{newestFirst ? 'Neueste oben' : 'Älteste oben'}</Text>
+          </Pressable>
+        </View>
         {timeline.map((row) =>
           row.kind === 'event' ? (
             <Text key={'e' + row.item.created_at + row.item.type} style={s.event}>
@@ -295,7 +328,10 @@ const s = StyleSheet.create({
   field: { flexDirection: 'row', gap: 10, paddingVertical: 4 },
   fieldKey: { width: 110, color: colors.muted, fontSize: 13 },
   fieldVal: { flex: 1, color: colors.text, fontSize: 13 },
-  section: { fontSize: 13, fontWeight: '700', color: colors.muted, marginTop: 6 },
+  section: { fontSize: 13, fontWeight: '700', color: colors.muted },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sortText: { fontSize: 13, fontWeight: '600', color: BRAND },
   event: { fontSize: 12, color: colors.muted, textAlign: 'center', paddingHorizontal: 10 },
   msg: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 12, gap: 4 },
   reply: { borderLeftWidth: 4, borderLeftColor: BRAND },

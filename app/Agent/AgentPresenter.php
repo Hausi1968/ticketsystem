@@ -57,6 +57,7 @@ class AgentPresenter
             'category' => $ticket->category ? ['id' => $ticket->category->getKey(), 'name' => $ticket->category->name] : null,
             'priority' => ['value' => $ticket->priority?->value, 'label' => $ticket->priority?->getLabel()],
             'assignee' => $ticket->assignee ? ['id' => $ticket->assignee->getKey(), 'name' => $ticket->assignee->name] : null,
+            'team' => $ticket->team ? ['id' => $ticket->team->getKey(), 'name' => $ticket->team->name] : null,
             'contact' => $ticket->contact ? ['name' => $ticket->contact->name, 'email' => $ticket->contact->email] : null,
             'channel' => $ticket->channel,
             'sla_due_at' => $ticket->sla_due_at?->toIso8601String(),
@@ -68,7 +69,7 @@ class AgentPresenter
 
     public static function full(Ticket $ticket, User $user): array
     {
-        $ticket->loadMissing(['tenant', 'status', 'category', 'assignee', 'contact', 'messages.attachments', 'messages.user', 'events.user', 'timeEntries']);
+        $ticket->loadMissing(['tenant', 'status', 'category', 'assignee', 'team', 'contact', 'messages.attachments', 'messages.user', 'events.user', 'timeEntries']);
         $canWrite = BulkEditor::canWrite($user, $ticket);
         $role = $user->roleIn($ticket->tenant_id);
 

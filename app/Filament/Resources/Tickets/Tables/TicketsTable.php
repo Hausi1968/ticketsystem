@@ -74,6 +74,10 @@ class TicketsTable
                 TextColumn::make('assignee.name')->label('Bearbeiter')->placeholder('– niemand –')
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy(
                         User::query()->select('name')->whereColumn('users.id', 'tickets.assignee_id'), $direction)),
+                TextColumn::make('team.name')->label('Team')->placeholder('–')
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy(
+                        Team::query()->withoutGlobalScopes()->select('name')->whereColumn('teams.id', 'tickets.team_id'), $direction))
+                    ->toggleable(),
                 ...self::customFieldColumns(),
                 TextColumn::make('created_at')->label('Erstellt')->dateTime('d.m.Y H:i', 'Europe/Berlin')->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -133,6 +137,16 @@ class TicketsTable
                 ])
                 ->action(fn (Collection $records, array $data) => $report('Zugewiesen', app(BulkEditor::class)->assign(
                     $records, $data['assignee_id'] ? User::query()->find($data['assignee_id']) : null, auth()->user())))
+                ->deselectRecordsAfterCompletion(),
+            BulkAction::make('bulkTeam')->label('Team setzen')->icon(Heroicon::OutlinedUserGroup)
+                ->schema([
+                    Select::make('team_id')->label('Team')->placeholder('– kein Team –')
+                        ->options(fn () => Team::query()->with('tenant')->orderBy('name')->get()
+                            ->mapWithKeys(fn (Team $t) => [$t->id => "{$t->name} ({$t->tenant->short_code})"]))
+                        ->helperText('Ein Team wird nur bei Tickets seines Mandanten gesetzt.'),
+                ])
+                ->action(fn (Collection $records, array $data) => $report('Team', app(BulkEditor::class)->team(
+                    $records, $data['team_id'] ? Team::query()->find($data['team_id']) : null, auth()->user())))
                 ->deselectRecordsAfterCompletion(),
             BulkAction::make('bulkStatus')->label('Status setzen')->icon(Heroicon::OutlinedFlag)
                 ->schema([Select::make('status_id')->label('Status')->options(fn () => ViewTicket::statusOptions())->required()])

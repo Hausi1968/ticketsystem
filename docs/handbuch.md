@@ -2,7 +2,7 @@
 
 # Anliego – Benutzerhandbuch
 
-Stand: 16.11.2026 · gilt für die Weboberfläche 1.1.0 und die Mitarbeiter-App (Android) 1.0
+Stand: 16.11.2026 · gilt für die Weboberfläche 1.2.0 und die Mitarbeiter-App (Android) 1.0
 
 Dieses Handbuch beschreibt alles, was Mitarbeiter und Administratoren in Anliego tun können.
 Abschnitte, für die Administratorrechte nötig sind, tragen neben der Überschrift den Vermerk **(Admin)**.
@@ -116,7 +116,7 @@ Anleitung als PDF in einem neuen Fenster.
 ### Versionen
 
 Unten auf jeder Seite steht die Version der Weboberfläche mit dem Stand des letzten Updates, z. B.
-„Anliego 1.1.0 · Stand 16.11.2026 15:05“. Ein Klick darauf (oder **Version …** im Menü oben rechts) öffnet
+„Anliego 1.2.0 · Stand 16.11.2026 15:05“. Ein Klick darauf (oder **Version …** im Menü oben rechts) öffnet
 die Seite **Versionen**:
 
 - **Weboberfläche**: Versionsnummer, Datum des letzten Updates auf dem Server, PHP- und Laravel-Version
@@ -147,6 +147,7 @@ Menü **Tickets**.
 |---|---|
 | **Meine** | dir zugewiesene, nicht geschlossene Tickets |
 | **Unzugewiesen** | offene Tickets ohne Bearbeiter – hier holt man sich Arbeit |
+| **Meine Teams** | nicht geschlossene Tickets der Teams, in denen du Mitglied bist (egal, wer sie bearbeitet) |
 | **Alle offenen** | alle offenen Tickets deiner Mandanten |
 | **Wartend** | Tickets in einem wartenden Status (z. B. „Warten auf Kunde“) |
 | **Geschlossen** | erledigte Tickets |
@@ -173,8 +174,10 @@ die aktuellen Filter, **Ansicht löschen** entfernt sie. Ansichten gehören nur 
 
 ### Mehrere Tickets auf einmal bearbeiten
 
-Tickets links ankreuzen → **Ausgewählte bearbeiten**: Übernehmen, Zuweisen, Status setzen,
-Priorität setzen, Kategorie setzen.
+Tickets links ankreuzen → **Ausgewählte bearbeiten**: Übernehmen, Zuweisen, Team setzen, Status setzen,
+Priorität setzen, Kategorie setzen. Ein Team wird nur bei Tickets seines Mandanten gesetzt.
+
+Die Spalte **Team** lässt sich über das Spalten-Symbol ein- und ausblenden und sortieren.
 
 ### Übernehmen direkt aus der Liste
 
@@ -185,7 +188,10 @@ Bei unzugewiesenen Tickets steht in der Zeile **Übernehmen** – das Ticket geh
 Ein Klick auf ein Ticket öffnet die Ticketansicht. Oben stehen Nummer, Betreff, Mandant, Status, Kategorie,
 Priorität, Bearbeiter, Frist, Kontakt und die eigenen Felder, darunter der **Verlauf** mit allen Nachrichten,
 Antworten, internen Notizen (gelb hinterlegt), Eingangsbestätigungen, Anhängen und Ereignissen
-(z. B. „Status geändert“, „zugewiesen an …“).
+(z. B. „Status geändert“, „zugewiesen an …“, „Team Einkauf → Reparatur“).
+
+Der Verlauf zeigt die **neueste Nachricht oben**. Über dem Verlauf schaltet **Älteste oben zeigen** bzw.
+**Neueste oben zeigen** die Reihenfolge um. Die Wahl gilt für alle Tickets, bis du dich abmeldest.
 
 ![Ticketansicht mit Verlauf, interner Notiz und Details](img/screens/ticket.png)
 
@@ -205,7 +211,7 @@ Hinweis **„Neue Nachricht seit dem Öffnen“** – so antwortet niemand auf e
 | **Übernehmen** | Du wirst Bearbeiter des Tickets. |
 | **Antworten** | E-Mail an den Kunden (bzw. Antwort in der Mitglieder-App). Du kannst einen **Textbaustein** einfügen, weitere Empfänger in **CC** setzen, **Anhänge** hochladen, die aufgewendete **Zeit** in Minuten eintragen und den **Status danach** wählen (z. B. „Warten auf Kunde“). Die Signatur wird automatisch angehängt, die Ticketnummer steht im Betreff. Antwortet der Kunde, landet seine E-Mail wieder in diesem Ticket. |
 | **Interne Notiz** | Nur für Mitarbeiter sichtbar, geht nie an den Kunden. Auch Light-Agents dürfen Notizen schreiben. Zeit kann mit erfasst werden. |
-| **Zuweisen** | Bearbeiter (und Team) ändern. Der neue Bearbeiter wird benachrichtigt. |
+| **Zuweisen (Team / Bearbeiter)** | Unter **Bearbeiten**: Team und Bearbeiter ändern. Ein Ticket kann einem Team, einer Person oder beidem zugeordnet sein. Der neue Bearbeiter wird benachrichtigt. Bleibt der Bearbeiter leer und verteilt das Team automatisch (reihum oder nach Auslastung), bekommt das Ticket gleich ein Teammitglied. |
 | **Status ändern** | Status wählen. Ein schließender Status beendet die Fristen. |
 | **Kategorie** | Kategorie setzen oder entfernen. |
 | **Priorität ändern** | Niedrig, Normal, Hoch, Dringend – die Fristen werden neu berechnet. |
@@ -309,16 +315,17 @@ Beim ersten Start fragt die App, ob sie Mitteilungen senden darf – erlauben, s
 
 ### Ticketliste
 
-- Reiter **Meine**, **Unzugewiesen**, **Alle offenen**, **Wartend**, **Geschlossen**, **Alle**
-  (mit Anzahl bei „Meine“ und „Unzugewiesen“)
+- Reiter **Meine**, **Unzugewiesen**, **Meine Teams**, **Alle offenen**, **Wartend**, **Geschlossen**, **Alle**
+  (mit Anzahl bei „Meine“, „Unzugewiesen“ und „Meine Teams“)
 - **Suche** über Nummer, Betreff und Texte
 - **Mandanten-Auswahl** als Chips oben, wenn du mehrere Mandanten betreust
 - Nach unten ziehen aktualisiert, weiter scrollen lädt ältere Tickets
 
 ### Ticket
 
-- Kopf mit Status, Priorität, Kategorie, Bearbeiter, Frist und Feldern; Antippen öffnet die Auswahl zum Ändern
-- Verlauf mit neuester Nachricht oben, Anhänge antippen öffnet sie mit der passenden App
+- Kopf mit Status, Priorität, Kategorie, Bearbeiter, Team, Frist und Feldern; Antippen öffnet die Auswahl zum Ändern
+- Verlauf mit neuester Nachricht oben; **Neueste oben / Älteste oben** rechts über dem Verlauf dreht die
+  Reihenfolge um, die App merkt sich die Wahl. Anhänge antippen öffnet sie mit der passenden App
 - **Übernehmen**, **Antworten**, **Notiz**
 - Hinweis, wer das Ticket gerade ansieht oder schreibt; die Ansicht aktualisiert sich alle 15 Sekunden
 
@@ -351,6 +358,11 @@ Alle Einstellungen gelten je Mandant, soweit nicht anders angegeben.
 
 - **Zugang**: Name, E-Mail, Passwort, Aktiv, Administrator
 - **Betreute Mandanten**: je Mandant die Rolle (Supervisor, Agent, Light-Agent)
+- **Teams**: Häkchen bei allen Teams, in denen der Mitarbeiter ist. Ein Mitarbeiter kann mehreren Teams
+  angehören, auch bei verschiedenen Mandanten. Es zählen nur Teams der Mandanten, die er betreut. Die
+  Einstellung „Bekommt Zuweisungen“ bleibt beim Speichern erhalten; sie wird beim Team geändert.
+
+Die Mitarbeiterliste zeigt die Teams jedes Mitarbeiters (Spalte **Teams**).
 
 Inaktive Mitarbeiter können sich nicht mehr anmelden; ihre Tickets bleiben erhalten.
 
@@ -369,7 +381,8 @@ eigener Zuweisung hat also Vorrang. Light-Agents und inaktive Mitarbeiter bekomm
 Teams ordnen Tickets über Postfächer, API-Schlüssel und Regeln zu und steuern, wer bei neuen Tickets
 benachrichtigt wird. Die Liste der Teams zeigt Mitglieder und Zuweisungsart.
 
-**Mitglieder** pflegst du unten auf der Seite des Teams:
+Ein Mitarbeiter kann in mehreren Teams sein. **Mitglieder** pflegst du unten auf der Seite des Teams
+(oder beim Mitarbeiter unter **Teams**):
 
 - **Mitglied hinzufügen**: Angeboten werden nur aktive Mitarbeiter, die den Mandanten des Teams betreuen.
 - **Bekommt Zuweisungen**: Nur diese Mitglieder bekommen automatisch Tickets, über die Zuweisungsart des
@@ -483,3 +496,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Teams: automatische Zuweisung reihum oder nach Auslastung; App-Updates ohne neue APK |
 | 16.11.2026 | Bildschirmfotos der wichtigsten Seiten |
 | 16.11.2026 | Web 1.1.0: Version unten auf jeder Seite, Seite „Versionen“; App zeigt App- und Web-Version unter Konto |
+| 16.11.2026 | Web 1.2.0: Verlauf sortierbar (Standard neueste oben); Tickets einem Team zuordnen (Web, App, mehrere auf einmal); Reiter „Meine Teams“; Teams beim Mitarbeiter pflegen |

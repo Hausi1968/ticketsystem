@@ -115,6 +115,7 @@ export type TicketSummary = {
   category: { id: number; name: string } | null;
   priority: { value: string; label: string };
   assignee: { id: number; name: string } | null;
+  team: { id: number; name: string } | null;
   contact: { name: string | null; email: string | null } | null;
   channel: string;
   sla_due_at: string | null;
@@ -158,7 +159,7 @@ export type TicketList = {
   page: number;
   has_more: boolean;
   total: number;
-  counts: { mine: number; unassigned: number };
+  counts: { mine: number; unassigned: number; teams?: number };
 };
 
 export type Options = {
@@ -168,6 +169,7 @@ export type Options = {
   categories: { id: number; name: string; tenant_id: number | null }[];
   tenants: Tenant[];
   users: { id: number; name: string; tenant_ids: number[] }[];
+  teams?: { id: number; name: string; tenant_id: number }[];
 };
 
 /** Antwort der Bearbeitungs-Aktionen */

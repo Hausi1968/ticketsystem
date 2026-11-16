@@ -1,5 +1,6 @@
 # Android-App (mobile/) als APK über EAS bauen.
-# Braucht das Repository-Secret EXPO_TOKEN (expo.dev → Account settings → Access tokens).
+# Braucht das Repository-Secret EXPO_TOKEN (expo.dev → Account settings → Access tokens;
+# GitHub → Settings → Secrets and variables → Actions → New repository secret).
 # Start: von Hand („Run workflow“) oder bei Änderungen unter mobile/ auf dem Arbeits-Branch.
 name: App bauen (APK)
 
@@ -17,8 +18,6 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # EXPO_TOKEN kann als Repository- oder als Umgebungs-Secret (production) hinterlegt sein
-    environment: production
     defaults:
       run:
         working-directory: mobile

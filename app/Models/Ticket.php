@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MessageType;
 use App\Enums\StatusBehaviour;
 use App\Enums\TicketPriority;
 use App\Sla\SlaClock;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Ticket extends Model
 {
@@ -35,6 +37,7 @@ class Ticket extends Model
             'fields' => 'array',
             'last_customer_message_at' => 'datetime',
             'last_agent_message_at' => 'datetime',
+            'customer_seen_at' => 'datetime',
             'first_response_at' => 'datetime',
             'closed_at' => 'datetime',
             'waiting_since' => 'datetime',
@@ -141,6 +144,31 @@ class Ticket extends Model
             'worked_on' => $workedOn ?? now()->toDateString(),
             'note' => $note ? mb_substr($note, 0, 255) : null,
         ]);
+    }
+
+    /** Zeitpunkt der letzten Antwort des Teams (keine Notizen, keine automatischen Nachrichten) */
+    public function lastReplyAt(): ?Carbon
+    {
+        $value = $this->getAttribute('last_reply_at')
+            ?? $this->messages()->where('type', MessageType::Reply)->reorder()->max('created_at');
+
+        return $value ? Carbon::parse($value) : null;
+    }
+
+    /** Hat das Team geantwortet, seit der Nutzer das Ticket zuletzt angesehen hat? */
+    public function hasUnreadReply(): bool
+    {
+        $reply = $this->lastReplyAt();
+
+        return $reply !== null && ($this->customer_seen_at === null || $reply->gt($this->customer_seen_at));
+    }
+
+    /** Nutzer hat das Ticket angesehen (ohne updated_at zu verändern) */
+    public function markSeenByCustomer(): void
+    {
+        $this->timestamps = false;
+        $this->forceFill(['customer_seen_at' => now()])->saveQuietly();
+        $this->timestamps = true;
     }
 
     public function messages(): HasMany

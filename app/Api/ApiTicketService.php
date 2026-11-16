@@ -131,7 +131,7 @@ class ApiTicketService
                 $upload->attachTo($message);
             }
 
-            $ticket->forceFill(['last_customer_message_at' => now()])->save();
+            $ticket->forceFill(['last_customer_message_at' => now(), 'customer_seen_at' => now()])->save();
 
             if (in_array($status->behaviour, [StatusBehaviour::Closed, StatusBehaviour::Pending], true)) {
                 $ticket->changeStatus(TicketStatus::OPEN);

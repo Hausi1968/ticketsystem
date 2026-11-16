@@ -8,9 +8,12 @@ import { TicketRow } from '@/components/TicketRow';
 import { colors, Empty, ErrorBox, Loading } from '@/components/ui';
 import { UpdateReadyNotice } from '@/components/UpdateNotice';
 
+// Ersatz, falls der Server (ältere Version) keine Reiter mitliefert; sonst gelten die Reiter vom Server
 const TABS = [
   { key: 'mine', label: 'Meine' },
   { key: 'unassigned', label: 'Unzugewiesen' },
+  { key: 'teams', label: 'Meine Teams' },
+  { key: 'snoozed', label: 'Zurückgestellt' },
   { key: 'open', label: 'Alle offenen' },
   { key: 'pending', label: 'Wartend' },
   { key: 'closed', label: 'Geschlossen' },
@@ -85,6 +88,7 @@ export default function Tickets() {
   );
 
   const tenants = options?.tenants ?? [];
+  const tabs = options?.tabs?.length ? options.tabs : TABS;
   const searching = query !== '';
   const label = (key: string, text: string) => {
     const n = key === 'mine' ? counts?.mine : key === 'unassigned' ? counts?.unassigned : key === 'teams' ? counts?.teams : undefined;
@@ -123,7 +127,7 @@ export default function Tickets() {
         </View>
         {!searching && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <Chip key={t.key} label={label(t.key, t.label)} active={tab === t.key} onPress={() => setTab(t.key)} />
             ))}
           </ScrollView>

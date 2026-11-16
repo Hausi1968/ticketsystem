@@ -1,0 +1,80 @@
+{
+  "expo": {
+    "name": "Anliego",
+    "slug": "ticketsystem",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "anliego",
+    "owner": "dc-neuwerk-1986-ev",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "de.dcneuwerk1986.anliego",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "de.dcneuwerk1986.anliego",
+      "adaptiveIcon": {
+        "backgroundColor": "#4f46e5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-font",
+      "expo-updates",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#4f46e5"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Anliego braucht Zugriff auf deine Fotos, um sie an Antworten anzuhängen.",
+          "cameraPermission": "Anliego braucht die Kamera, um Fotos an Antworten anzuhängen.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "backgroundColor": "#4f46e5"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a9cf77c0-5014-441c-ac46-37ef65693b87"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a9cf77c0-5014-441c-ac46-37ef65693b87",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
+  }
+}

@@ -66,7 +66,7 @@ jobs:
           mkdir -p -f "$DIR"
           mirror --reverse --delete --parallel=4 \
             --exclude-glob .git/ --exclude-glob .github/ --exclude-glob tests/ \
-            --exclude-glob docs/ --exclude-glob storage/ \
+            --exclude-glob docs/ --exclude-glob storage/ --exclude-glob mobile/ \
             --exclude .env --exclude database/database.sqlite \
             --exclude phpunit.xml --exclude .phpunit.result.cache \
             ./ "$DIR"

@@ -116,6 +116,7 @@ class TicketNotifier
         $latest = $ticket->messages()->where('type', MessageType::Customer)->reorder()->latest('id')->first();
 
         return [
+            'id' => $ticket->getKey(),
             'reference' => $ticket->reference(),
             'subject' => Str::limit((string) $ticket->subject, 120),
             'tenant' => (string) $ticket->tenant?->name,

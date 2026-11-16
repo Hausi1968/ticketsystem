@@ -22,7 +22,7 @@ class TeamForm
                 'manual' => 'Manuell / Übernehmen',
                 'round_robin' => 'Reihum (später)',
                 'load' => 'Nach Auslastung (später)',
-            ]),
+            ])->helperText('Automatisch zuweisen: unter Verwaltung → Regeln „reihum im Team“ wählen. Berücksichtigt werden die Mitglieder mit „Bekommt Zuweisungen“.'),
         ]);
     }
 }

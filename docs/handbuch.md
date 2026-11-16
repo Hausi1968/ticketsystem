@@ -334,9 +334,19 @@ Inaktive Mitarbeiter können sich nicht mehr anmelden; ihre Tickets bleiben erha
 
 ### Teams (Admin, Supervisor)
 
-Mandant, Name und Art der Zuweisung (derzeit „Manuell / Übernehmen“; reihum und nach Auslastung folgen).
+Ein Team gehört zu einem Mandanten. Im Formular stehen Mandant, Name und Art der Zuweisung.
 Teams ordnen Tickets über Postfächer, API-Schlüssel und Regeln zu und steuern, wer bei neuen Tickets
 benachrichtigt wird.
+
+**Mitglieder** pflegst du unten auf der Seite des Teams:
+
+- **Mitglied hinzufügen**: Angeboten werden nur aktive Mitarbeiter, die den Mandanten des Teams betreuen.
+- **Bekommt Zuweisungen**: Nur diese Mitglieder werden bei Regeln mit „reihum im Team“ berücksichtigt
+  (es bekommt, wer am wenigsten offene Tickets hat). Ausschalten z. B. bei Urlaub oder für Mitglieder,
+  die nur mitlesen sollen. Ändern über **Bearbeiten**.
+- **Entfernen** nimmt den Mitarbeiter aus dem Team. Seine Tickets bleiben ihm zugewiesen.
+
+Die Liste der Teams zeigt die Anzahl der Mitglieder.
 
 ### Postfächer (Admin)
 
@@ -435,3 +445,4 @@ gegeben. Kleinere Änderungen kommen als automatisches Update in die installiert
 | Datum | Änderung |
 |---|---|
 | 16.11.2026 | Erste Fassung: Weboberfläche, Mitarbeiter-App 1.0, Verwaltung, Übersichtsgrafik |
+| 16.11.2026 | Teams: Mitglieder hinzufügen, „Bekommt Zuweisungen“, entfernen |

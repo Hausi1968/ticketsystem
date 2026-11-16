@@ -79,6 +79,12 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return $this->belongsToMany(Tenant::class)->using(TenantMembership::class)->withPivot('role')->withTimestamps();
     }
 
+    /** Teams, in denen der Mitarbeiter Mitglied ist (je Mandant) */
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class)->withPivot(['tenant_id', 'receives_assignments'])->withTimestamps();
+    }
+
     public function roleIn(Tenant|int $tenant): ?MembershipRole
     {
         $tenantId = $tenant instanceof Tenant ? $tenant->getKey() : $tenant;

@@ -28,7 +28,7 @@ class Mailbox extends Model
         'tenant_id', 'team_id', 'default_category_id', 'name', 'email', 'usage', 'from_name', 'sent_folder', 'sent_copy_bcc',
         'imap_host', 'imap_port', 'imap_encryption', 'imap_username', 'imap_password', 'imap_folder', 'processed_folder',
         'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password',
-        'poll_interval_minutes', 'active', 'send_acknowledgement', 'acknowledgement_text',
+        'poll_interval_minutes', 'active', 'send_acknowledgement', 'acknowledgement_text', 'blocked_senders', 'ignore_newsletters',
     ];
 
     protected $hidden = ['imap_password', 'smtp_password'];
@@ -40,9 +40,55 @@ class Mailbox extends Model
             'smtp_password' => 'encrypted',
             'active' => 'boolean',
             'send_acknowledgement' => 'boolean',
+            'ignore_newsletters' => 'boolean',
             'last_polled_at' => 'datetime',
             'last_success_at' => 'datetime',
         ];
+    }
+
+    /** Gesperrte Absender: Einträge wie „name@firma.de“, „@firma.de“, „*@firma.de“ oder „firma.de“ */
+    public function blockedSenderList(): array
+    {
+        return collect(preg_split('/[\r\n,;]+/', (string) $this->blocked_senders) ?: [])
+            ->map(fn ($e) => mb_strtolower(trim((string) $e)))
+            ->map(fn ($e) => str_starts_with($e, '*@') ? substr($e, 1) : $e)
+            ->filter()->unique()->values()->all();
+    }
+
+    public function blocksSender(?string $email): bool
+    {
+        $email = mb_strtolower(trim((string) $email));
+        if ($email === '' || ! str_contains($email, '@')) {
+            return false;
+        }
+        $domain = substr($email, strrpos($email, '@') + 1);
+
+        foreach ($this->blockedSenderList() as $entry) {
+            if (str_contains($entry, '@') && ! str_starts_with($entry, '@')) {
+                if ($entry === $email) {
+                    return true;
+                }
+
+                continue;
+            }
+            $blocked = ltrim($entry, '@');
+            if ($domain === $blocked || str_ends_with($domain, '.'.$blocked)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Absender zur Sperrliste hinzufügen (ohne Doppelte) */
+    public function blockSender(string $entry): void
+    {
+        $list = $this->blockedSenderList();
+        $entry = mb_strtolower(trim($entry));
+        if (! in_array($entry, $list, true)) {
+            $list[] = $entry;
+        }
+        $this->forceFill(['blocked_senders' => implode("\n", $list)])->save();
     }
 
     protected static function booted(): void

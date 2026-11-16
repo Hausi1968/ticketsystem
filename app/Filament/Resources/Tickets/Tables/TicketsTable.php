@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\Tables;
 
 use App\Enums\TicketPriority;
+use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Models\CustomField;
 use App\Models\Team;
 use App\Models\Tenant;
@@ -13,8 +14,12 @@ use App\Models\User;
 use App\Sla\SlaDisplay;
 use App\Support\BadgeColor;
 use App\Support\TicketNumber;
+use App\Tickets\BulkEditor;
 use App\Tickets\TicketSearch;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
@@ -24,6 +29,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class TicketsTable
 {
@@ -98,7 +104,57 @@ class TicketsTable
             ])
             ->recordActions([
                 self::takeAction(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make(self::bulkActions())->label('Ausgewählte bearbeiten'),
             ]);
+    }
+
+    /** Mehrere markierte Tickets auf einmal übernehmen, zuweisen, Status/Priorität/Kategorie setzen. */
+    private static function bulkActions(): array
+    {
+        $report = function (string $what, array $result) {
+            [$done, $skipped] = $result;
+            Notification::make()->title("{$what}: {$done} Ticket(s) geändert")
+                ->body($skipped ? "{$skipped} übersprungen (keine Berechtigung, zusammengeführt oder passt nicht zum Mandanten)." : null)
+                ->{$skipped ? 'warning' : 'success'}()->send();
+        };
+
+        return [
+            BulkAction::make('bulkTake')->label('Übernehmen')->icon(Heroicon::OutlinedHandRaised)
+                ->requiresConfirmation()->modalHeading('Ausgewählte Tickets übernehmen?')
+                ->action(fn (Collection $records) => $report('Übernommen', app(BulkEditor::class)->assign($records, auth()->user(), auth()->user())))
+                ->deselectRecordsAfterCompletion(),
+            BulkAction::make('bulkAssign')->label('Zuweisen')->icon(Heroicon::OutlinedUser)
+                ->schema([
+                    Select::make('assignee_id')->label('Bearbeiter')->placeholder('– niemand –')->searchable()
+                        ->options(fn () => User::query()->where('active', true)->orderBy('name')->pluck('name', 'id'))
+                        ->helperText('Tickets von Mandanten, die diese Person nicht betreut, werden übersprungen.'),
+                ])
+                ->action(fn (Collection $records, array $data) => $report('Zugewiesen', app(BulkEditor::class)->assign(
+                    $records, $data['assignee_id'] ? User::query()->find($data['assignee_id']) : null, auth()->user())))
+                ->deselectRecordsAfterCompletion(),
+            BulkAction::make('bulkStatus')->label('Status setzen')->icon(Heroicon::OutlinedFlag)
+                ->schema([Select::make('status_id')->label('Status')->options(fn () => ViewTicket::statusOptions())->required()])
+                ->action(fn (Collection $records, array $data) => $report('Status', app(BulkEditor::class)->status(
+                    $records, TicketStatus::query()->findOrFail($data['status_id']), auth()->user())))
+                ->deselectRecordsAfterCompletion(),
+            BulkAction::make('bulkPriority')->label('Priorität setzen')->icon(Heroicon::OutlinedExclamationTriangle)
+                ->schema([Select::make('priority')->label('Priorität')->options(TicketPriority::class)->required()])
+                ->action(fn (Collection $records, array $data) => $report('Priorität', app(BulkEditor::class)->priority(
+                    $records, $data['priority'] instanceof TicketPriority ? $data['priority'] : TicketPriority::from($data['priority']), auth()->user())))
+                ->deselectRecordsAfterCompletion(),
+            BulkAction::make('bulkCategory')->label('Kategorie setzen')->icon(Heroicon::OutlinedTag)
+                ->schema([
+                    Select::make('category_id')->label('Kategorie')->placeholder('– keine –')
+                        ->options(fn () => TicketCategory::query()->with('tenant')->where('active', true)->ordered()->get()
+                            ->mapWithKeys(fn (TicketCategory $c) => [$c->id => $c->name.($c->tenant ? " ({$c->tenant->short_code})" : '')]))
+                        ->helperText('Kategorien eines Mandanten werden nur bei dessen Tickets gesetzt.'),
+                ])
+                ->action(fn (Collection $records, array $data) => $report('Kategorie', app(BulkEditor::class)->category(
+                    $records, $data['category_id'] ? TicketCategory::query()->find($data['category_id']) : null, auth()->user())))
+                ->deselectRecordsAfterCompletion(),
+        ];
     }
 
     /** Eigene Felder mit „In der Ticketliste anzeigen“ (je Kennung eine Spalte, auch wenn mehrere Mandanten sie haben) */

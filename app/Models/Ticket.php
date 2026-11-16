@@ -25,12 +25,13 @@ class Ticket extends Model
 
     protected $fillable = [
         'tenant_id', 'subject', 'status_id', 'category_id', 'priority', 'channel', 'mailbox_id', 'team_id', 'contact_id',
-        'assignee_id', 'follow_up_of_id', 'merged_into_id', 'context', 'fields', 'api_key_id', 'last_customer_message_at', 'last_agent_message_at',
+        'assignee_id', 'follow_up_of_id', 'merged_into_id', 'context', 'fields', 'api_key_id', 'error_fingerprint', 'error_count', 'error_last_at', 'last_customer_message_at', 'last_agent_message_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'error_last_at' => 'datetime',
             'priority' => TicketPriority::class,
             'number' => 'integer',
             'context' => 'array',

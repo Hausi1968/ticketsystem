@@ -1,13 +1,13 @@
 <?php
 
 use App\Enums\MessageType;
-use App\Models\TicketStatus;
 use App\Mail\Inbound\InboundMailProcessor;
 use App\Models\Attachment;
 use App\Models\MailReceipt;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Models\TicketStatus;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Storage;
 

@@ -63,6 +63,18 @@ class MailboxForm
                         ->visible(fn (Get $get) => (bool) $get('send_acknowledgement')),
                 ]),
 
+            Section::make('Spam und Sperrliste')
+                ->visible(fn (Get $get) => $get('usage') !== 'send')
+                ->description('Aus diesen E-Mails entsteht kein Ticket. Abwesenheitsnotizen und Unzustellbarkeitsmeldungen werden immer ignoriert.')
+                ->collapsible()
+                ->schema([
+                    Textarea::make('blocked_senders')->label('Gesperrte Absender')->rows(5)
+                        ->placeholder("werbung@shop.de\n@spam-domain.de")
+                        ->helperText('Eine Adresse oder Domain je Zeile. „@firma.de“ sperrt alle Absender dieser Domain (auch Subdomains). Im Ticket gibt es dafür auch „Absender sperren“.'),
+                    Toggle::make('ignore_newsletters')->label('Newsletter und Massen-Mails ignorieren')
+                        ->helperText('Erkennt E-Mails mit Abmelde-Link (List-Unsubscribe) oder „Precedence: bulk“. Achtung: Manche Webshops verschicken Bestellungen genauso.'),
+                ]),
+
             Section::make('Eingang (IMAP)')->columns(3)
                 ->description(fn (Get $get) => $get('usage') === 'send'
                     ? 'Nur nötig, wenn Kopien der Antworten in einen Gesendet-Ordner sollen.' : null)

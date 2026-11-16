@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\MessageType;
-use App\Models\TicketStatus;
 use App\Jobs\DeliverTicketMessage;
 use App\Mail\Inbound\InboundMailProcessor;
 use App\Mail\Outbound\MailboxTransportFactory;
@@ -9,6 +8,7 @@ use App\Mail\Outbound\ReplySender;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Models\TicketStatus;
 use App\Tenancy\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;

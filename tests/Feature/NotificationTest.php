@@ -71,7 +71,7 @@ it('ordnet die Antwort des Kunden auf die Bestätigung dem Ticket zu und bestät
 });
 
 it('verwendet den eigenen Text des Postfachs', function () {
-    $this->mailbox->update(['acknowledgement_text' => "Hallo {name}, Nr. {nummer} zu „{betreff}“ – {mandant}"]);
+    $this->mailbox->update(['acknowledgement_text' => 'Hallo {name}, Nr. {nummer} zu „{betreff}“ – {mandant}']);
 
     incoming(['from' => 'bestellung-ohne-name@kunde.de']);
 

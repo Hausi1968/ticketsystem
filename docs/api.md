@@ -199,3 +199,29 @@ $verlauf = $anliego->ticket('MUS-1000');
 ```
 
 Den Idempotency-Key am besten einmal pro Meldung erzeugen und bei einer Wiederholung derselben Meldung wiederverwenden.
+
+## Automatische Fehlermeldungen
+
+`POST /api/v1/errors` meldet einen Programmfehler der Anwendung. Daraus wird ein Ticket (Kanal „Fehlermeldung“),
+ohne Eingangsbestätigung und ohne Antwort-Möglichkeit an den Absender – im Ticket gibt es nur interne Notizen.
+
+Gleiche Fehler werden zusammengefasst: Der Fingerabdruck entsteht aus `type`, `message` (Zahlen werden ignoriert),
+`file` und `line` – oder aus einem eigenen `fingerprint`. Solange das Ticket offen ist, wird nur mitgezählt
+(„17× aufgetreten“) und höchstens stündlich eine Notiz mit dem letzten Auftreten ergänzt. Ist es gelöst oder
+geschlossen, entsteht beim nächsten Auftreten ein neues Ticket mit Verweis auf das alte.
+
+| Feld | Pflicht | Bedeutung |
+|---|---|---|
+| `message` | ja | Fehlermeldung (bis 5000 Zeichen) |
+| `type` | | z. B. Klassenname der Exception |
+| `level` | | `warning`, `error` (Priorität hoch), `critical`/`fatal` (dringend) |
+| `file`, `line` | | Ort des Fehlers (relativer Pfad) |
+| `url`, `method` | | aufgerufene Seite |
+| `user` | | Kennung des angemeldeten Benutzers (keine Namen/E-Mails) |
+| `app_version`, `php_version` | | Versionen |
+| `source` | | Name der Anwendung (Standard: Name des API-Schlüssels) |
+| `category` | | Kategorie im Ticketsystem |
+| `trace` | | Aufrufkette **ohne Argumente** (bis 50000 Zeichen) |
+| `fingerprint` | | eigener Schlüssel zum Zusammenfassen |
+
+Antwort: `201` (neues Ticket) bzw. `200` (gezählt) mit `{"reference": "TSV-1042", "new_ticket": true, "count": 1}`.

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tickets\Pages;
 
+use App\Api\ErrorReportService;
 use App\Enums\MembershipRole;
 use App\Enums\TicketPriority;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
@@ -11,17 +12,22 @@ use App\Models\CannedResponse;
 use App\Models\CustomField;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
+use App\Models\TicketMessage;
+use App\Models\TicketPresence;
 use App\Models\TicketStatus;
 use App\Models\User;
+use App\Tickets\Presence;
 use App\Tickets\TicketMerger;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Utilities\Get;
@@ -41,6 +47,59 @@ class ViewTicket extends ViewRecord
 {
     protected static string $resource = TicketResource::class;
 
+    /** Letzte Nachricht, die dieser Mitarbeiter gesehen hat – für die Warnung vor doppelter Antwort */
+    public ?int $seenMessageId = null;
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+        $this->seenMessageId = $this->latestMessageId();
+        app(Presence::class)->touch($this->record, auth()->user());
+    }
+
+    /** Wird von der Ansicht alle 10 Sekunden aufgerufen; aktualisiert Anwesenheit und Verlauf. */
+    public function heartbeat(): void
+    {
+        $writing = collect($this->mountedActions ?? [])->contains(fn ($a) => in_array($a['name'] ?? null, ['reply', 'note'], true));
+        app(Presence::class)->touch($this->record, auth()->user(), $writing ? TicketPresence::WRITING : TicketPresence::VIEWING);
+
+        // Ohne offenes Antwortfenster sieht der Mitarbeiter neue Nachrichten direkt im Verlauf
+        if (! $writing) {
+            $this->seenMessageId = $this->latestMessageId();
+        }
+    }
+
+    private function latestMessageId(): ?int
+    {
+        return $this->record->messages()->reorder()->max('id');
+    }
+
+    /**
+     * Ist seit dem Öffnen eine neue Nachricht (Kunde oder Kollege) eingegangen, wird einmal gewarnt
+     * und abgebrochen. Ein zweites „Senden“ schickt die Antwort dann ab.
+     */
+    private function guardAgainstNewMessages(Action $action): void
+    {
+        $new = $this->record->messages()->reorder()->with('user')
+            ->when($this->seenMessageId, fn ($query) => $query->where('id', '>', $this->seenMessageId))
+            ->where(fn ($query) => $query->whereNull('user_id')->orWhere('user_id', '!=', auth()->id()))
+            ->latest('id')->get();
+
+        $this->seenMessageId = $this->latestMessageId();
+
+        if ($new->isEmpty()) {
+            return;
+        }
+
+        $who = $new->map(fn (TicketMessage $m) => $m->user?->name ?? ($m->from_name ?: $m->from_email))->filter()->unique()->join(', ');
+        Notification::make()->warning()->persistent()
+            ->title($new->count() === 1 ? 'Neue Nachricht seit dem Öffnen' : $new->count().' neue Nachrichten seit dem Öffnen')
+            ->body("Von {$who}. Bitte den Verlauf prüfen. Erneut auf „Senden“ klicken, um trotzdem abzuschicken.")
+            ->send();
+        $this->refreshRecord();
+        $action->halt();
+    }
+
     public function getTitle(): string|Htmlable
     {
         return $this->record->subject;
@@ -51,12 +110,17 @@ class ViewTicket extends ViewRecord
         $merged = $this->record->merged_into_id ? $this->record->mergedInto : null;
 
         return $this->record->reference().' · '.$this->record->tenant->name
-            .($merged ? ' · zusammengeführt in '.$merged->reference() : '');
+            .($merged ? ' · zusammengeführt in '.$merged->reference() : '')
+            .($this->record->error_count > 1 ? ' · '.$this->record->error_count.'× aufgetreten, zuletzt '
+                .$this->record->error_last_at?->timezone($this->record->tenant->timezone ?: 'Europe/Berlin')->format('d.m.Y H:i') : '');
     }
 
     public function content(Schema $schema): Schema
     {
         return $schema->components([
+            View::make('tickets.presence')->viewData(fn () => [
+                'others' => app(Presence::class)->others($this->record, auth()->user()),
+            ]),
             View::make('tickets.conversation')->viewData(fn () => [
                 'ticket' => $this->record->fresh(['tenant', 'status', 'category', 'contact', 'assignee', 'team', 'mailbox', 'participants', 'followUpOf', 'slaPolicy',
                     'messages.attachments', 'messages.user', 'events.user']),
@@ -78,6 +142,7 @@ class ViewTicket extends ViewRecord
                 $this->timeAction(),
                 $this->fieldsAction(),
                 $this->mergeAction(),
+                $this->blockSenderAction(),
             ])->label('Bearbeiten')->button()->color('gray')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
         ];
     }
@@ -92,7 +157,8 @@ class ViewTicket extends ViewRecord
     private function replyAction(): Action
     {
         return Action::make('reply')->label('Antworten')->icon(Heroicon::OutlinedPaperAirplane)
-            ->visible(fn () => $this->canWrite() && ! $this->record->merged_into_id)
+            // Automatische Fehlermeldungen haben keinen Empfänger – dort nur Notizen
+            ->visible(fn () => $this->canWrite() && ! $this->record->merged_into_id && $this->record->channel !== ErrorReportService::CHANNEL)
             ->modalHeading(fn () => 'Antwort an '.$this->record->contact->label())
             ->modalWidth('3xl')
             ->modalSubmitActionLabel('Senden')
@@ -121,7 +187,10 @@ class ViewTicket extends ViewRecord
                 Select::make('status_id')->label('Status danach')->options(fn () => self::statusOptions())
                     ->default(fn () => TicketStatus::system(TicketStatus::WAITING)->getKey())->required(),
             ])
+            ->beforeFormFilled(fn () => app(Presence::class)->touch($this->record, auth()->user(), TicketPresence::WRITING))
             ->action(function (array $data, Action $action) {
+                $this->guardAgainstNewMessages($action);
+
                 try {
                     $message = app(ReplySender::class)->reply(
                         $this->record, auth()->user(), $data['body'], $data['cc'] ?? [],
@@ -304,6 +373,36 @@ class ViewTicket extends ViewRecord
             });
     }
 
+    private function blockSenderAction(): Action
+    {
+        return Action::make('blockSender')->label('Absender sperren')->icon(Heroicon::OutlinedNoSymbol)->color('danger')
+            ->visible(fn () => $this->record->mailbox_id && $this->record->contact
+                && (auth()->user()->is_admin || auth()->user()->roleIn($this->record->tenant_id) === MembershipRole::Supervisor))
+            ->modalHeading('Absender sperren')
+            ->modalDescription(fn () => 'Aus E-Mails dieses Absenders an „'.$this->record->mailbox?->email.'“ entstehen keine Tickets mehr. Die Liste lässt sich unter Verwaltung → Postfächer bearbeiten.')
+            ->schema([
+                Radio::make('scope')->label('Sperren')->required()->default('address')
+                    ->options(fn () => [
+                        'address' => $this->record->contact->email,
+                        'domain' => 'alle Absender von @'.Str::after($this->record->contact->email, '@'),
+                    ]),
+                Toggle::make('solve')->label('Ticket als gelöst markieren')->default(true),
+            ])
+            ->action(function (array $data) {
+                $email = mb_strtolower($this->record->contact->email);
+                $entry = $data['scope'] === 'domain' ? '@'.Str::after($email, '@') : $email;
+                $this->record->mailbox->blockSender($entry);
+
+                if ($data['solve'] ?? false) {
+                    $this->record->changeStatus(TicketStatus::SOLVED, auth()->user(), ['note' => 'Absender gesperrt']);
+                }
+                $this->record->logEvent('sender_blocked', auth()->user(), ['entry' => $entry]);
+
+                Notification::make()->success()->title("{$entry} gesperrt")->send();
+                $this->refreshRecord();
+            });
+    }
+
     private function mergeCandidates()
     {
         return Ticket::query()->with('tenant', 'contact')
@@ -343,5 +442,7 @@ class ViewTicket extends ViewRecord
     private function refreshRecord(): void
     {
         $this->record->refresh();
+        $this->seenMessageId = max((int) $this->seenMessageId, (int) $this->latestMessageId()) ?: null;
+        app(Presence::class)->touch($this->record, auth()->user());
     }
 }

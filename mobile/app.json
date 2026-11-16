@@ -67,7 +67,14 @@
       "policy": "fingerprint"
     },
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "a9cf77c0-5014-441c-ac46-37ef65693b87"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a9cf77c0-5014-441c-ac46-37ef65693b87",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

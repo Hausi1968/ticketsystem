@@ -25,8 +25,8 @@ npx expo export --platform web   # schneller Test im Browser (gegen http://127.0
 
 ## APK bauen (EAS)
 Projekt: https://expo.dev/accounts/dc-neuwerk-1986-ev/projects/ticketsystem.
-Einmalig die Projekt-ID in `app.json` unter `expo.extra.eas.projectId` und `expo.updates.url`
-(`https://u.expo.dev/<projectId>`) eintragen – ohne Projekt-ID gibt es keine Push-Benachrichtigungen.
+Projekt-ID `a9cf77c0-5014-441c-ac46-37ef65693b87` (steht in `app.json`). Für Builds über GitHub muss im
+Expo-Projekt unter Settings → GitHub das Repository `Hausi1968/ticketsystem` mit Basisverzeichnis `mobile` verbunden sein.
 
 ```bash
 npx eas-cli@latest build --platform android --profile preview   # APK zum direkten Installieren

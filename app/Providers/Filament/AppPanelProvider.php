@@ -76,6 +76,8 @@ class AppPanelProvider extends PanelProvider
             ])
             // Version unten auf jeder Seite
             ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.version-footer'))
+            // Abmelden direkt sichtbar, nicht nur im Benutzermenü
+            ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn () => view('filament.logout-button'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

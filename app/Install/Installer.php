@@ -239,7 +239,7 @@ class Installer
             'MAIL_PASSWORD' => $mail ? (string) $in['mail_password'] : '',
             'MAIL_FROM_ADDRESS' => $mail ? trim($in['mail_from']) : 'noreply@'.(parse_url($in['app_url'], PHP_URL_HOST) ?: 'example.de'),
             'MAIL_FROM_NAME' => 'Anliego',
-            'ANLIEGO_REQUIRE_MFA' => 'true',
+            'ANLIEGO_MFA_PFLICHT' => 'false',
             'ANLIEGO_DEPLOY_TOKEN' => $deployToken,
             'ANLIEGO_CRON_WARNING_MINUTES' => '10',
         ];

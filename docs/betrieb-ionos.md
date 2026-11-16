@@ -56,6 +56,8 @@ GitHub → *Actions* → *Deploy auf IONOS* → *Run workflow*.
 
 Der Workflow installiert die Abhängigkeiten und lädt alles per SFTP hoch. Beim ersten Mal endet er mit dem Hinweis „Anliego noch nicht eingerichtet“. Das ist richtig so.
 
+Bei späteren Updates legt der Workflow vor dem Hochladen die Datei `storage/framework/anliego-wartung` an. Solange sie da ist, zeigt `public/index.php` allen die Wartungsseite `public/wartung.html` (App und API bekommen `503` mit `{"error":"maintenance"}`), und der Cronjob setzt aus. Nach den Migrationen entfernt der Workflow die Datei wieder, auch wenn ein Schritt fehlgeschlagen ist. Ist sie älter als 30 Minuten, wird sie übergangen. Von Hand einschalten lässt sich die Wartung, indem man diese Datei per SFTP anlegt.
+
 ## 6. Einrichtungsassistent
 
 `https://tickets.deine-domain.de` im Browser öffnen. Solange Anliego nicht eingerichtet ist, erscheint der Assistent (`/install.php`):
@@ -91,7 +93,7 @@ Die Übersicht in Anliego zeigt unter **Cronjob**, wann er zuletzt gelaufen ist.
 ## 8. Erste Anmeldung
 
 1. `https://tickets.deine-domain.de` öffnen und mit dem Administrator-Zugang anmelden.
-2. Die Zwei-Faktor-Anmeldung mit einer Authenticator-App (z. B. Microsoft Authenticator, Google Authenticator, 2FAS) einrichten. Sie ist für alle Mitarbeiter Pflicht. Die Wiederherstellungscodes sicher aufbewahren.
+2. Die Zwei-Faktor-Anmeldung mit einer Authenticator-App (z. B. Microsoft Authenticator, Google Authenticator, 2FAS) einrichten. Sie ist freiwillig, aber empfohlen (Pflicht für alle nur mit `ANLIEGO_MFA_PFLICHT=true` in der `.env`). Die Wiederherstellungscodes sicher aufbewahren.
 3. Unter *Verwaltung* Mandanten, Mitarbeiter und Teams anlegen. Unter *Status* und *Kategorien* die Status (mit „schließt das Ticket ja/nein“) und Ticketkategorien nach Bedarf anpassen.
 4. Unter *Fristen (SLA)* je Mandant eine Richtlinie mit Geschäftszeiten und Feiertagen anlegen (optional).
 
@@ -161,6 +163,7 @@ Die E-Mails werden über die Warteschlange verschickt, also innerhalb einer Minu
 |---|---|
 | Fehler 500 | `storage/logs/laravel-*.log` per SFTP ansehen. Häufig: `APP_KEY` fehlt oder Datenbankdaten falsch. |
 | Seite zeigt Ordnerinhalt oder `.env` ist abrufbar | Subdomain zeigt nicht auf `public/`. Sofort korrigieren (Schritt 2). |
+| Wartungsseite bleibt stehen | Datei `storage/framework/anliego-wartung` per SFTP löschen (sie läuft nach 30 Minuten auch von selbst ab). |
 | Deploy-Schritt „Migrationen“ meldet 404 | `ANLIEGO_DEPLOY_TOKEN` in `.env` und GitHub-Secret stimmen nicht überein, oder `.env` fehlt. |
 | Cronjob „prüfen“ | Befehl und Pfad im IONOS-Cronjob prüfen; die Ausgabe schickt IONOS auf Wunsch per E-Mail. |
 | Postfach zeigt „Fehler“ | *Verbindung testen*; häufig falsches Passwort oder Ordnername. Nach der Korrektur *Jetzt abrufen*. |

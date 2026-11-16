@@ -2,7 +2,7 @@
 
 return [
     // Version der Weboberfläche (bei jeder für Mitarbeiter sichtbaren Änderung erhöhen, siehe Handbuch Kap. 12)
-    'version' => '1.3.0',
+    'version' => '1.3.1',
 
     // App-Anmeldungen, die so viele Tage nicht benutzt wurden, verfallen (0 = nie)
     // Aufbewahrung des Sicherheitsprotokolls in Tagen
@@ -12,7 +12,8 @@ return [
 
     // Zwei-Faktor-Anmeldung für alle Mitarbeiter verpflichtend (empfohlen in Produktion,
     // da jeder Zugang Daten mehrerer Mandanten sieht)
-    'require_mfa' => env('ANLIEGO_REQUIRE_MFA', true),
+    // Zwei-Faktor-Anmeldung ist freiwillig; mit ANLIEGO_MFA_PFLICHT=true wird sie für alle verpflichtend
+    'require_mfa' => (bool) env('ANLIEGO_MFA_PFLICHT', false),
 
     // Geheimer Schlüssel für den Aufruf /_deploy/migrate nach einem Upload ohne SSH.
     // Leer = Route deaktiviert.

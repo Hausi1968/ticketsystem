@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MembershipRole;
 use App\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,18 @@ class Team extends Model
     use BelongsToTenant, HasFactory;
 
     protected $fillable = ['tenant_id', 'name', 'assignment_mode'];
+
+    public const MANUAL = 'manual';
+
+    public const ROUND_ROBIN = 'round_robin';
+
+    public const LOAD = 'load';
+
+    public const ASSIGNMENT_MODES = [
+        self::MANUAL => 'Manuell / Übernehmen',
+        self::ROUND_ROBIN => 'Automatisch reihum',
+        self::LOAD => 'Automatisch nach Auslastung (wer am wenigsten offen hat)',
+    ];
 
     public function users(): BelongsToMany
     {
@@ -25,5 +38,50 @@ class Team extends Model
             'tenant_id' => $this->tenant_id,
             'receives_assignments' => $receivesAssignments,
         ]);
+    }
+
+    /**
+     * Mitglieder, die automatisch Tickets bekommen können: „bekommt Zuweisungen“, aktiv und im Mandanten
+     * mindestens Agent (Light-Agents dürfen nicht antworten).
+     */
+    public function assignableMembers()
+    {
+        return $this->users()->wherePivot('receives_assignments', true)
+            ->where('users.active', true)
+            ->where(fn ($q) => $q->where('users.is_admin', true)
+                ->orWhereHas('memberships', fn ($m) => $m->where('tenant_id', $this->tenant_id)
+                    ->where('role', '!=', MembershipRole::LightAgent->value)));
+    }
+
+    /** Nächster Bearbeiter nach der Zuweisungsart des Teams; null bei „Manuell“ oder ohne passende Mitglieder */
+    public function nextAssignee(): ?User
+    {
+        return match ($this->assignment_mode) {
+            self::ROUND_ROBIN => $this->nextInRotation(),
+            self::LOAD => $this->leastBusy(),
+            default => null,
+        };
+    }
+
+    /** Reihum: das nächste Mitglied nach dem zuletzt bedachten (nach Kennung sortiert), am Ende wieder von vorn */
+    private function nextInRotation(): ?User
+    {
+        $members = $this->assignableMembers()->orderBy('users.id')->get();
+        if ($members->isEmpty()) {
+            return null;
+        }
+
+        $next = $members->first(fn (User $u) => $u->getKey() > (int) $this->last_assigned_user_id) ?? $members->first();
+        $this->forceFill(['last_assigned_user_id' => $next->getKey()])->save();
+
+        return $next;
+    }
+
+    /** Nach Auslastung: das Mitglied mit den wenigsten offenen oder wartenden Tickets dieses Mandanten */
+    public function leastBusy(): ?User
+    {
+        return $this->assignableMembers()
+            ->withCount(['assignedTickets as open_count' => fn ($q) => $q->where('tenant_id', $this->tenant_id)->unresolved()])
+            ->orderBy('open_count')->orderBy('users.id')->first();
     }
 }

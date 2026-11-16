@@ -12,10 +12,19 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/** Wendet die Regeln auf ein neu angelegtes Ticket an (nach der ersten Nachricht, vor den Hinweisen ans Team). */
+/**
+ * Wendet die Regeln auf ein neu angelegtes Ticket an (nach der ersten Nachricht, vor den Hinweisen ans Team).
+ * Ist danach niemand zugewiesen, verteilt das Team das Ticket nach seiner Zuweisungsart (reihum / nach Auslastung).
+ */
 class RuleEngine
 {
     public function apply(Ticket $ticket): void
+    {
+        $this->applyRules($ticket);
+        $this->assignByTeam($ticket);
+    }
+
+    private function applyRules(Ticket $ticket): void
     {
         $rules = TicketRule::query()->forTenant((int) $ticket->tenant_id)->where('active', true)
             ->orderBy('sort')->orderBy('id')->get();
@@ -41,6 +50,22 @@ class RuleEngine
             if ($rule->stop_processing) {
                 break;
             }
+        }
+    }
+
+    private function assignByTeam(Ticket $ticket): void
+    {
+        if ($ticket->assignee_id || ! $ticket->team_id) {
+            return;
+        }
+
+        try {
+            $team = Team::query()->where('tenant_id', $ticket->tenant_id)->find($ticket->team_id);
+            if ($assignee = $team?->nextAssignee()) {
+                $ticket->assignTo($assignee);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Automatische Zuweisung im Team fehlgeschlagen', ['ticket' => $ticket->getKey(), 'error' => $e->getMessage()]);
         }
     }
 
@@ -96,18 +121,11 @@ class RuleEngine
                 ->orWhereHas('memberships', fn ($m) => $m->where('tenant_id', $ticket->tenant_id)->where('role', '!=', MembershipRole::LightAgent->value)));
     }
 
-    /** Reihum: das Teammitglied mit den wenigsten offenen Tickets dieses Mandanten */
+    /** Regel „reihum im Team“: das Teammitglied mit den wenigsten offenen Tickets dieses Mandanten */
     private function nextInTeam(Ticket $ticket): ?User
     {
-        $team = $ticket->team_id ? Team::query()->find($ticket->team_id) : null;
-        if (! $team) {
-            return null;
-        }
-
-        $ids = $team->users()->wherePivot('receives_assignments', true)->pluck('users.id');
-
-        return $this->eligible($ticket)->whereIn('id', $ids)
-            ->withCount(['assignedTickets as open_count' => fn ($q) => $q->where('tenant_id', $ticket->tenant_id)->unresolved()])
-            ->orderBy('open_count')->orderBy('id')->first();
+        return $ticket->team_id
+            ? Team::query()->where('tenant_id', $ticket->tenant_id)->find($ticket->team_id)?->leastBusy()
+            : null;
     }
 }

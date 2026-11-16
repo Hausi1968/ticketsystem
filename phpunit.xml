@@ -16,7 +16,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
-        <env name="ANLIEGO_REQUIRE_MFA" value="false"/>
+        <env name="ANLIEGO_MFA_PFLICHT" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

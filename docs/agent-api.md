@@ -7,7 +7,7 @@ Tickets der Mandanten, die er betreut (Administratoren alle).
 ## Anmelden
 - `POST /login` `{email, password, device}` → `{token, id, name, tenants…}` oder `{mfa_required: true, mfa_token}`
 - `POST /login/mfa` `{mfa_token, code}` – 6-stelliger Code aus der Authenticator-App oder ein Wiederherstellungscode
-- Ist `ANLIEGO_REQUIRE_MFA` an und die Zwei-Faktor-Anmeldung noch nicht eingerichtet: `403 {error: "mfa_setup"}` – erst im Browser einrichten
+- Ist `ANLIEGO_MFA_PFLICHT` an und die Zwei-Faktor-Anmeldung noch nicht eingerichtet: `403 {error: "mfa_setup"}` – erst im Browser einrichten
 - `POST /logout` beendet die Anmeldung dieses Geräts, `GET /me`
 
 ## Tickets

@@ -6,6 +6,13 @@ use Symfony\Component\Console\Input\ArgvInput;
 
 define('LARAVEL_START', microtime(true));
 
+// Während eines Deploys (siehe public/index.php) lässt der Cronjob diese Runde aus,
+// statt mit dem halb hochgeladenen Stand Mails abzuholen
+$wartung = __DIR__.'/storage/framework/anliego-wartung';
+if (($argv[1] ?? '') === 'schedule:run' && is_file($wartung) && time() - (int) @filemtime($wartung) < 1800) {
+    exit(0);
+}
+
 // Register the Composer autoloader...
 require __DIR__.'/vendor/autoload.php';
 

@@ -40,7 +40,7 @@ php artisan anliego:create-admin du@example.de "Dein Name"
 php artisan serve
 ```
 
-Lokal lässt sich die Zwei-Faktor-Pflicht mit `ANLIEGO_REQUIRE_MFA=false` in der `.env` abschalten.
+Die Zwei-Faktor-Anmeldung ist freiwillig. Mit `ANLIEGO_MFA_PFLICHT=true` in der `.env` wird sie für alle Mitarbeiter verpflichtend.
 
 Tests: `vendor/bin/pest`
 

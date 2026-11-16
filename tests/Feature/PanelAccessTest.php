@@ -89,3 +89,21 @@ it('legt bei der Ersteinrichtung ohne SSH den ersten Administrator an', function
     $this->post('/_deploy/migrate', [], ['X-Deploy-Token' => 'geheim'])->assertOk()->assertDontSee('angelegt');
     expect(User::count())->toBe(1);
 });
+
+it('zeigt oben einen gut sichtbaren Abmelde-Knopf', function () {
+    $this->actingAs(User::factory()->create())->get('/')->assertOk()
+        ->assertSee('anliego-logout', false)
+        ->assertSee('action="'.url('/logout').'"', false);
+
+    $this->post('/logout')->assertRedirect();
+    $this->assertGuest();
+});
+
+it('macht die Zwei-Faktor-Anmeldung freiwillig, außer sie ist als Pflicht eingestellt', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user)->get('/')->assertOk();
+
+    expect(filament()->getPanel('app')->isMultiFactorAuthenticationRequired())->toBeFalse();
+    config(['anliego.require_mfa' => true]);
+    expect(filament()->getPanel('app')->isMultiFactorAuthenticationRequired())->toBeTrue();
+});

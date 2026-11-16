@@ -86,14 +86,20 @@ kannst du einen der Wiederherstellungscodes eingeben, die beim Einrichten angeze
 
 **Passwort vergessen?** Auf der Anmeldeseite „Passwort vergessen“ wählen. Du bekommst einen Link per E-Mail.
 
+### Abmelden
+
+Oben rechts neben deinem Kürzel steht der Knopf **Abmelden** (auf dem Handy nur das Symbol mit dem Pfeil).
+Danach ist der Browser abgemeldet; die Mitarbeiter-App bleibt davon unberührt.
+
 ### Profil
 
 Oben rechts über dein Kürzel (Avatar) → **Profil**:
 
 - Name, E-Mail-Adresse und Passwort ändern
 - **Zwei-Faktor-Anmeldung** einrichten: QR-Code mit der Authenticator-App scannen, Code bestätigen,
-  Wiederherstellungscodes sicher aufbewahren. Ist sie für alle vorgeschrieben, fordert Anliego beim ersten
-  Anmelden dazu auf.
+  Wiederherstellungscodes sicher aufbewahren. Die Zwei-Faktor-Anmeldung ist **freiwillig**, aber empfohlen;
+  wer sie eingerichtet hat, kann sie hier auch wieder ausschalten. Nur wenn der Betreiber sie für alle
+  vorschreibt (`ANLIEGO_MFA_PFLICHT=true` in der `.env`), fordert Anliego beim ersten Anmelden dazu auf.
 - **Benachrichtigungen per E-Mail** – für jedes Ereignis einzeln ein- oder ausschalten:
   - Neues Ticket in meinen Mandanten bzw. Teams
   - Mir wurde ein Ticket zugewiesen
@@ -512,6 +518,14 @@ Auf dem Server muss ein Cronjob `php artisan schedule:run` regelmäßig (ideal j
 5–10 Minuten) aufrufen. Darüber laufen Mailabruf, Versand, Fristenprüfung, Wiedervorlage, Automatik, Aufräumen und Sicherung.
 Ob er läuft, zeigt die Kachel **Cronjob** auf der Übersicht. Einrichtung und Updates: `docs/betrieb-ionos.md`.
 
+### Updates und Wartungsseite (Admin)
+
+Ein Update lädt GitHub → Actions → **Deploy auf IONOS** hoch und passt danach die Datenbank an. Solange das
+läuft (meist 5–10 Minuten), zeigt Anliego allen statt Fehlermeldungen die Seite **„Anliego wird gerade
+aktualisiert“**, die sich alle 30 Sekunden selbst neu lädt. Die App bekommt in der Zeit den Hinweis, es gleich
+noch einmal zu versuchen, und der Cronjob setzt eine Runde aus. Danach geht alles von selbst weiter.
+Bleibt ein Deploy hängen, verschwindet die Wartungsseite spätestens nach 30 Minuten.
+
 ### Mitarbeiter-App verteilen (Admin)
 
 Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die Datei geht dann an die Mitarbeiter.
@@ -530,3 +544,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Web 1.1.0: Version unten auf jeder Seite, Seite „Versionen“; App zeigt App- und Web-Version unter Konto |
 | 16.11.2026 | Web 1.2.0: Verlauf sortierbar (Standard neueste oben); Tickets einem Team zuordnen (Web, App, mehrere auf einmal); Reiter „Meine Teams“; Teams beim Mitarbeiter pflegen |
 | 16.11.2026 | Web 1.3.0: App-Geräte abmelden und automatischer Ablauf; Sicherheitsprotokoll und Sicherheits-Kopfzeilen; Team-Benachrichtigung je Team einschaltbar; Wiedervorlage mit Reiter „Zurückgestellt“; Kollegen in Notizen mit @Name erwähnen |
+| 16.11.2026 | Web 1.3.1: Knopf „Abmelden“ oben rechts; Zwei-Faktor-Anmeldung freiwillig; Wartungsseite während eines Updates |

@@ -63,12 +63,17 @@ jobs:
           PASS: ${{ secrets.IONOS_SFTP_PASSWORD }}
           DIR: ${{ secrets.IONOS_TARGET_DIR }}
         run: |
+          # Wartungsseite einschalten, solange alter und neuer Stand gemischt auf dem Server liegen
+          # (public/index.php zeigt dann public/wartung.html; entfernt wird die Datei nach den Migrationen)
+          date -u +%Y-%m-%dT%H:%M:%SZ > anliego-wartung
           lftp -u "$USER","$PASS" "sftp://$HOST" <<LFTP
           set sftp:auto-confirm yes
           set net:max-retries 3
           set net:timeout 30
           mkdir -p -f "$DIR"
-          mirror --reverse --delete --parallel=4 \
+          mkdir -p -f "$DIR/storage/framework"
+          put -O "$DIR/storage/framework" anliego-wartung
+          mirror --reverse --exclude anliego-wartung --delete --parallel=4 \
             --exclude-glob .git/ --exclude-glob .github/ --exclude-glob tests/ \
             --exclude-glob docs/ --exclude-glob storage/ --exclude-glob mobile/ \
             --exclude .env --exclude database/database.sqlite \
@@ -96,3 +101,20 @@ jobs:
 
           echo "::error::Migrationen fehlgeschlagen (HTTP $code)"
           exit 1
+
+      - name: Wartungsseite ausschalten
+        # Auch nach einem Fehler, damit Anliego nicht in der Wartung hängen bleibt
+        if: always()
+        env:
+          HOST: ${{ secrets.IONOS_SFTP_HOST }}
+          USER: ${{ secrets.IONOS_SFTP_USER }}
+          PASS: ${{ secrets.IONOS_SFTP_PASSWORD }}
+          DIR: ${{ secrets.IONOS_TARGET_DIR }}
+        run: |
+          lftp -u "$USER","$PASS" "sftp://$HOST" <<LFTP || echo "::warning::Wartungsdatei konnte nicht entfernt werden; sie läuft nach 30 Minuten von selbst ab."
+          set sftp:auto-confirm yes
+          set net:max-retries 3
+          set net:timeout 30
+          rm -f "$DIR/storage/framework/anliego-wartung"
+          bye
+          LFTP

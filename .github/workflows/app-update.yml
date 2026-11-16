@@ -1,0 +1,48 @@
+# Update für die installierte Anliego-App veröffentlichen (expo-updates, Kanal preview), ohne neue APK.
+# Die App lädt es beim nächsten Start. Geht nur, wenn sich am nativen Teil nichts geändert hat
+# (gleicher Fingerprint wie die installierte APK) – sonst „App bauen (APK)“ starten.
+# Braucht das Repository-Secret EXPO_TOKEN. Start nur von Hand.
+name: App-Update veröffentlichen
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Kurze Beschreibung des Updates'
+        required: false
+        default: 'Update'
+
+concurrency:
+  group: app-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+      - name: Update bei EAS veröffentlichen
+        env:
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          eas update --channel preview --platform android --message "$MESSAGE" --non-interactive --json > update.json
+          node -e "const u=require('./update.json');for(const x of [].concat(u)){console.log('Update',x.id,'Laufzeit',x.runtimeVersion)}" | tee -a "$GITHUB_STEP_SUMMARY"

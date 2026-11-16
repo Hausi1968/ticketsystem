@@ -21,6 +21,9 @@ Schedule::command('anliego:poll-mailboxes')
 
 Schedule::command('anliego:cleanup')->dailyAt('03:15');
 
+// Datenbank nachts sichern (storage/app/private/backups, Download unter Verwaltung → Datensicherung)
+Schedule::command('anliego:backup')->dailyAt('02:30')->withoutOverlapping(60);
+
 // SLA: Warnungen vor Ablauf und Meldungen bei Überschreitung
 Schedule::command('anliego:sla-check')
     ->everyMinute()

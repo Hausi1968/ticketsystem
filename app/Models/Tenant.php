@@ -54,6 +54,18 @@ class Tenant extends Model
         return $this->hasMany(Team::class);
     }
 
+    /** Einstellung aus settings (Automatik, Erinnerung …) */
+    public function setting(string $key, mixed $default = null): mixed
+    {
+        return data_get($this->settings, $key, $default);
+    }
+
+    /** Tage aus den Einstellungen; 0 oder leer = aus */
+    public function days(string $key): int
+    {
+        return max(0, (int) $this->setting($key, 0));
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';

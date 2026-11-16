@@ -26,4 +26,5 @@ Schedule::command('anliego:sla-check')
     ->everyMinute()
     ->withoutOverlapping(5);
 
-// Später: automatisches Schließen gelöster Tickets
+// Je Mandant: Erinnerung an Kunden, wartende Tickets lösen, gelöste schließen
+Schedule::command('anliego:automation')->hourlyAt(7)->withoutOverlapping(30);

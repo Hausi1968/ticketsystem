@@ -4,8 +4,11 @@ namespace App\Filament\Resources\Tenants\Schemas;
 
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use App\Console\Commands\RunAutomation;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class TenantForm
@@ -34,6 +37,24 @@ class TenantForm
                 Select::make('locale')->label('Sprache')->default('de')->required()
                     ->options(['de' => 'Deutsch', 'en' => 'Englisch']),
             ]),
+
+            Section::make('Automatisch erledigen')
+                ->description('In Kalendertagen, gezählt ab der letzten Nachricht des Teams. 0 = aus.')
+                ->columns(3)->schema([
+                    TextInput::make('settings.reminder_days')->label('Kunden erinnern nach')
+                        ->helperText('Bei „Wartet auf Kunde“ einmal eine Erinnerung per E-Mail schicken.')
+                        ->numeric()->integer()->minValue(0)->maxValue(365)->default(0)->suffix('Tagen')->live(onBlur: true),
+                    TextInput::make('settings.auto_solve_days')->label('Wartende Tickets lösen nach')
+                        ->helperText('„Wartet auf Kunde“ ohne Antwort → „Gelöst“ (ab der Erinnerung gezählt, falls eine ging).')
+                        ->numeric()->integer()->minValue(0)->maxValue(365)->default(0)->suffix('Tagen'),
+                    TextInput::make('settings.auto_close_days')->label('Gelöste Tickets schließen nach')
+                        ->helperText('„Gelöst“ → „Geschlossen“. Danach legt eine Kundenantwort je nach Status ein neues Ticket an.')
+                        ->numeric()->integer()->minValue(0)->maxValue(365)->default(0)->suffix('Tagen'),
+                    Textarea::make('settings.reminder_text')->label('Text der Erinnerung')->rows(8)->columnSpanFull()
+                        ->placeholder(RunAutomation::DEFAULT_REMINDER)
+                        ->helperText('Leer = Standardtext (siehe Platzhalter im Feld). Platzhalter: {name}, {nummer}, {betreff}, {tage}, {mandant}, {absender}.')
+                        ->visible(fn (Get $get) => (int) $get('settings.reminder_days') > 0),
+                ]),
         ]);
     }
 }

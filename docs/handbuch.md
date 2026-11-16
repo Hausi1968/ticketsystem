@@ -2,7 +2,7 @@
 
 # Anliego – Benutzerhandbuch
 
-Stand: 16.11.2026 · gilt für die Weboberfläche 1.2.0 und die Mitarbeiter-App (Android) 1.0
+Stand: 16.11.2026 · gilt für die Weboberfläche 1.3.0 und die Mitarbeiter-App (Android) 1.0
 
 Dieses Handbuch beschreibt alles, was Mitarbeiter und Administratoren in Anliego tun können.
 Abschnitte, für die Administratorrechte nötig sind, tragen neben der Überschrift den Vermerk **(Admin)**.
@@ -108,6 +108,9 @@ alle 30 Sekunden). Per E-Mail kommen nur die Ereignisse, die du im Profil einges
 Bist du in der Mitarbeiter-App angemeldet, kommen dieselben Hinweise zusätzlich als **Push-Meldung** aufs Handy;
 ein Tipp darauf öffnet das Ticket.
 
+Ereignisse sind: neues Ticket, Zuweisung an dich, Kundenantwort, Fristen (SLA), Zuordnung eines Tickets zu
+einem deiner Teams (wenn das Team das eingeschaltet hat), Erwähnung in einer Notiz und Wiedervorlage.
+
 ### Handbuch
 
 Den Menüpunkt **Handbuch** findest du in der linken Navigation und im Menü oben rechts. Er öffnet diese
@@ -116,12 +119,17 @@ Anleitung als PDF in einem neuen Fenster.
 ### Versionen
 
 Unten auf jeder Seite steht die Version der Weboberfläche mit dem Stand des letzten Updates, z. B.
-„Anliego 1.2.0 · Stand 16.11.2026 15:05“. Ein Klick darauf (oder **Version …** im Menü oben rechts) öffnet
+„Anliego 1.3.0 · Stand 16.11.2026 15:05“. Ein Klick darauf (oder **Version …** im Menü oben rechts) öffnet
 die Seite **Versionen**:
 
 - **Weboberfläche**: Versionsnummer, Datum des letzten Updates auf dem Server, PHP- und Laravel-Version
 - **Mitarbeiter-App**: deine angemeldeten Geräte mit App-Version, Update-Stand und wann sie zuletzt aktiv waren.
   Administratoren sehen hier die Geräte aller Mitarbeiter; ältere App-Versionen sind als **veraltet** markiert.
+- **Abmelden** neben einem Gerät beendet dessen Anmeldung sofort, z. B. wenn ein Handy verloren ging.
+  Die App muss sich dort neu anmelden. Du kannst deine eigenen Geräte abmelden, Administratoren alle.
+
+Geräte, die 90 Tage nicht benutzt wurden, werden automatisch abgemeldet. Wenn du dein **Passwort änderst**,
+werden alle deine App-Geräte abgemeldet.
 
 Bei Fragen an den Support immer beide Versionen angeben.
 
@@ -148,6 +156,7 @@ Menü **Tickets**.
 | **Meine** | dir zugewiesene, nicht geschlossene Tickets |
 | **Unzugewiesen** | offene Tickets ohne Bearbeiter – hier holt man sich Arbeit |
 | **Meine Teams** | nicht geschlossene Tickets der Teams, in denen du Mitglied bist (egal, wer sie bearbeitet) |
+| **Zurückgestellt** | Tickets mit Wiedervorlage, bis sie wieder fällig sind |
 | **Alle offenen** | alle offenen Tickets deiner Mandanten |
 | **Wartend** | Tickets in einem wartenden Status (z. B. „Warten auf Kunde“) |
 | **Geschlossen** | erledigte Tickets |
@@ -210,8 +219,9 @@ Hinweis **„Neue Nachricht seit dem Öffnen“** – so antwortet niemand auf e
 |---|---|
 | **Übernehmen** | Du wirst Bearbeiter des Tickets. |
 | **Antworten** | E-Mail an den Kunden (bzw. Antwort in der Mitglieder-App). Du kannst einen **Textbaustein** einfügen, weitere Empfänger in **CC** setzen, **Anhänge** hochladen, die aufgewendete **Zeit** in Minuten eintragen und den **Status danach** wählen (z. B. „Warten auf Kunde“). Die Signatur wird automatisch angehängt, die Ticketnummer steht im Betreff. Antwortet der Kunde, landet seine E-Mail wieder in diesem Ticket. |
-| **Interne Notiz** | Nur für Mitarbeiter sichtbar, geht nie an den Kunden. Auch Light-Agents dürfen Notizen schreiben. Zeit kann mit erfasst werden. |
+| **Interne Notiz** | Nur für Mitarbeiter sichtbar, geht nie an den Kunden. Auch Light-Agents dürfen Notizen schreiben. Zeit kann mit erfasst werden. **Kollegen erwähnen:** Schreibe `@Name` in den Text (z. B. `@Anna` oder `@Anna Beispiel`) oder wähle unter **Kollegen benachrichtigen** aus. Die Kollegen bekommen einen Hinweis mit Link zum Ticket. Erwähnt werden können nur Mitarbeiter, die den Mandanten betreuen. Der Vorname allein reicht, wenn er eindeutig ist. |
 | **Zuweisen (Team / Bearbeiter)** | Unter **Bearbeiten**: Team und Bearbeiter ändern. Ein Ticket kann einem Team, einer Person oder beidem zugeordnet sein. Der neue Bearbeiter wird benachrichtigt. Bleibt der Bearbeiter leer und verteilt das Team automatisch (reihum oder nach Auslastung), bekommt das Ticket gleich ein Teammitglied. |
+| **Zurückstellen (Wiedervorlage)** | Unter **Bearbeiten**: Das Ticket bis **Morgen 8 Uhr**, **In 3 Tagen**, **In 1 Woche** oder zu einem eigenen Zeitpunkt zurückstellen. Bis dahin verschwindet es aus „Meine“, „Unzugewiesen“ und „Meine Teams“ und steht im Reiter **Zurückgestellt**. Zum Zeitpunkt kommt es zurück, und du (sowie der Bearbeiter) bekommst einen Hinweis. Antwortet der Kunde vorher, kommt es sofort zurück. **Wiedervorlage aufheben** holt es von Hand zurück. Fristen (SLA) laufen währenddessen weiter. |
 | **Status ändern** | Status wählen. Ein schließender Status beendet die Fristen. |
 | **Kategorie** | Kategorie setzen oder entfernen. |
 | **Priorität ändern** | Niedrig, Normal, Hoch, Dringend – die Fristen werden neu berechnet. |
@@ -315,7 +325,7 @@ Beim ersten Start fragt die App, ob sie Mitteilungen senden darf – erlauben, s
 
 ### Ticketliste
 
-- Reiter **Meine**, **Unzugewiesen**, **Meine Teams**, **Alle offenen**, **Wartend**, **Geschlossen**, **Alle**
+- Reiter **Meine**, **Unzugewiesen**, **Meine Teams**, **Zurückgestellt**, **Alle offenen**, **Wartend**, **Geschlossen**, **Alle**
   (mit Anzahl bei „Meine“, „Unzugewiesen“ und „Meine Teams“)
 - **Suche** über Nummer, Betreff und Texte
 - **Mandanten-Auswahl** als Chips oben, wenn du mehrere Mandanten betreust
@@ -327,6 +337,8 @@ Beim ersten Start fragt die App, ob sie Mitteilungen senden darf – erlauben, s
 - Verlauf mit neuester Nachricht oben; **Neueste oben / Älteste oben** rechts über dem Verlauf dreht die
   Reihenfolge um, die App merkt sich die Wahl. Anhänge antippen öffnet sie mit der passenden App
 - **Übernehmen**, **Antworten**, **Notiz**
+- **Wiedervorlage** im Abschnitt Bearbeiten: Morgen 8 Uhr, in 3 Tagen, in 1 Woche oder aufheben
+- In einer Notiz fügt ein Tipp auf einen Namen unter dem Textfeld `@Name` ein; der Kollege bekommt einen Hinweis
 - Hinweis, wer das Ticket gerade ansieht oder schreibt; die Ansicht aktualisiert sich alle 15 Sekunden
 
 ### Antworten und Notizen
@@ -381,7 +393,11 @@ eigener Zuweisung hat also Vorrang. Light-Agents und inaktive Mitarbeiter bekomm
 Teams ordnen Tickets über Postfächer, API-Schlüssel und Regeln zu und steuern, wer bei neuen Tickets
 benachrichtigt wird. Die Liste der Teams zeigt Mitglieder und Zuweisungsart.
 
-Ein Mitarbeiter kann in mehreren Teams sein. **Mitglieder** pflegst du unten auf der Seite des Teams
+Ein Mitarbeiter kann in mehreren Teams sein. **Team benachrichtigen, wenn ihm ein Ticket zugeordnet wird** (Schalter im Formular, standardmäßig aus):
+Ordnet jemand ein Ticket von Hand diesem Team zu und es wird dabei niemandem zugewiesen, bekommen alle
+Mitglieder einen Hinweis (Glocke, App und je nach Profil E-Mail).
+
+**Mitglieder** pflegst du unten auf der Seite des Teams
 (oder beim Mitarbeiter unter **Teams**):
 
 - **Mitglied hinzufügen**: Angeboten werden nur aktive Mitarbeiter, die den Mandanten des Teams betreuen.
@@ -474,10 +490,26 @@ Anliego sichert die Datenbank jede Nacht (02:30 Uhr). Unter **Verwaltung → Dat
 Sicherungen zum **Herunterladen**; **Jetzt sichern** erstellt sofort eine. Sicherungen regelmäßig zusätzlich
 außerhalb des Webspace aufbewahren.
 
+### Sicherheitsprotokoll (Admin)
+
+**Verwaltung → Sicherheitsprotokoll** zeigt, was an Zugängen passiert ist:
+
+- Anmeldungen und Abmeldungen an Weboberfläche und App, mit IP-Adresse und Gerät
+- **fehlgeschlagene Anmeldungen** (rot) und gesperrte Versuche nach zu vielen Fehlern
+- an- und abgemeldete sowie abgelaufene App-Geräte
+- geänderte Passwörter, neu angelegte oder geänderte Mitarbeiter (aktiv, Administrator, E-Mail)
+- hinzugefügte, geänderte oder entfernte Mandanten und Rollen eines Mitarbeiters
+
+Filter nach Ereignis und **Nur Fehlversuche**, Suche nach Name, E-Mail oder IP-Adresse.
+Einträge werden 180 Tage aufbewahrt und danach gelöscht.
+
+Außerdem sendet Anliego bei jeder Seite Sicherheits-Kopfzeilen: Die Oberfläche lässt sich nicht in fremde
+Seiten einbetten, und Browser rufen sie nach dem ersten Besuch nur noch verschlüsselt (HTTPS) auf.
+
 ### Hintergrundaufgaben (Admin)
 
 Auf dem Server muss ein Cronjob `php artisan schedule:run` regelmäßig (ideal jede Minute, mindestens alle
-5–10 Minuten) aufrufen. Darüber laufen Mailabruf, Versand, Fristenprüfung, Automatik, Aufräumen und Sicherung.
+5–10 Minuten) aufrufen. Darüber laufen Mailabruf, Versand, Fristenprüfung, Wiedervorlage, Automatik, Aufräumen und Sicherung.
 Ob er läuft, zeigt die Kachel **Cronjob** auf der Übersicht. Einrichtung und Updates: `docs/betrieb-ionos.md`.
 
 ### Mitarbeiter-App verteilen (Admin)
@@ -497,3 +529,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Bildschirmfotos der wichtigsten Seiten |
 | 16.11.2026 | Web 1.1.0: Version unten auf jeder Seite, Seite „Versionen“; App zeigt App- und Web-Version unter Konto |
 | 16.11.2026 | Web 1.2.0: Verlauf sortierbar (Standard neueste oben); Tickets einem Team zuordnen (Web, App, mehrere auf einmal); Reiter „Meine Teams“; Teams beim Mitarbeiter pflegen |
+| 16.11.2026 | Web 1.3.0: App-Geräte abmelden und automatischer Ablauf; Sicherheitsprotokoll und Sicherheits-Kopfzeilen; Team-Benachrichtigung je Team einschaltbar; Wiedervorlage mit Reiter „Zurückgestellt“; Kollegen in Notizen mit @Name erwähnen |

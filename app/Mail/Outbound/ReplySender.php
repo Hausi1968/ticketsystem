@@ -10,6 +10,8 @@ use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\TicketStatus;
 use App\Models\User;
+use App\Tickets\Mentions;
+use App\Tickets\TicketNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -104,9 +106,10 @@ class ReplySender
         return $message;
     }
 
-    public function note(Ticket $ticket, User $agent, string $body, array $files = []): TicketMessage
+    /** @param  array<int, int|string>  $notifyUserIds  Kollegen, die zusätzlich zu @Erwähnungen im Text einen Hinweis bekommen */
+    public function note(Ticket $ticket, User $agent, string $body, array $files = [], array $notifyUserIds = []): TicketMessage
     {
-        return DB::transaction(function () use ($ticket, $agent, $body, $files) {
+        return DB::transaction(function () use ($ticket, $agent, $body, $files, $notifyUserIds) {
             $message = $ticket->messages()->create([
                 'tenant_id' => $ticket->tenant_id,
                 'type' => MessageType::Note,
@@ -115,6 +118,11 @@ class ReplySender
             ]);
 
             $this->attachFiles($message, $files);
+
+            $mentioned = Mentions::resolve($ticket, $body, $notifyUserIds);
+            if ($mentioned->isNotEmpty()) {
+                app(TicketNotifier::class)->mentioned($ticket, $mentioned, $agent, trim(preg_replace('/\s+/', ' ', $body)));
+            }
 
             return $message;
         });

@@ -12,7 +12,7 @@ import { getItem, setItem } from '@/lib/storage';
 
 const POLL_MS = 15000;
 
-type Sheet = null | 'status' | 'priority' | 'category' | 'assignee' | 'team' | 'time';
+type Sheet = null | 'status' | 'priority' | 'category' | 'assignee' | 'team' | 'snooze' | 'time';
 
 /** Gemerkte Sortierung des Verlaufs (Standard: neueste oben) */
 const ORDER_KEY = 'anliego.verlauf.sortierung';
@@ -137,6 +137,17 @@ export default function TicketScreen() {
           ],
           selected: ticket.assignee ? String(ticket.assignee.id) : '',
         };
+      case 'snooze':
+        return {
+          title: 'Zurückstellen bis',
+          options: [
+            { value: 'tomorrow', label: 'Morgen 8 Uhr' },
+            { value: 'days3', label: 'In 3 Tagen' },
+            { value: 'week', label: 'In 1 Woche' },
+            ...(ticket.snoozed_until ? [{ value: 'off', label: 'Wiedervorlage aufheben' }] : []),
+          ],
+          selected: null,
+        };
       case 'team':
         return {
           title: 'Team',
@@ -155,6 +166,7 @@ export default function TicketScreen() {
     if (sheet === 'category') act('category', { category_id: value ? Number(value) : null });
     if (sheet === 'assignee') act('assign', { assignee_id: value ? Number(value) : null });
     if (sheet === 'team') act('team', { team_id: value ? Number(value) : null });
+    if (sheet === 'snooze') act('snooze', { preset: value });
   };
 
   if (!ticket) {
@@ -196,6 +208,7 @@ export default function TicketScreen() {
             {ticket.error_count > 1 && <Pill label={`${ticket.error_count}× aufgetreten`} tone="danger" />}
           </View>
           {deadline && <Text style={[s.meta, deadline.overdue && { color: colors.danger, fontWeight: '700' }]}>Frist {deadline.text}</Text>}
+          {ticket.snoozed_until && <Notice tone="warn" text={`Zurückgestellt bis ${dateTime(ticket.snoozed_until)}`} />}
           {ticket.merged_into && <Notice tone="warn" text={`Zusammengeführt in ${ticket.merged_into}`} />}
         </Card>
 
@@ -218,6 +231,14 @@ export default function TicketScreen() {
           <Row icon="flag-outline" title="Status" subtitle={ticket.status?.name ?? '–'} onPress={ticket.can.edit ? () => setSheet('status') : undefined} />
           <Row icon="alert-circle-outline" title="Priorität" subtitle={ticket.priority.label} onPress={ticket.can.edit ? () => setSheet('priority') : undefined} />
           <Row icon="pricetag-outline" title="Kategorie" subtitle={ticket.category?.name ?? 'Keine'} onPress={ticket.can.edit ? () => setSheet('category') : undefined} />
+          {ticket.status?.behaviour !== 'closed' && (
+            <Row
+              icon="alarm-outline"
+              title="Wiedervorlage"
+              subtitle={ticket.snoozed_until ? `zurückgestellt bis ${dateTime(ticket.snoozed_until)}` : 'nicht zurückgestellt'}
+              onPress={ticket.can.edit ? () => setSheet('snooze') : undefined}
+            />
+          )}
           <Row
             icon="time-outline"
             title="Arbeitszeit"

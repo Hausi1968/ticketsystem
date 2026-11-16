@@ -22,7 +22,7 @@ Route::prefix('api/agent/v1')->middleware(['api'])->group(function () {
         Route::post('tickets/{ticket}/reply', [TicketController::class, 'reply'])->whereNumber('ticket');
         Route::post('tickets/{ticket}/note', [TicketController::class, 'note'])->whereNumber('ticket');
         Route::post('tickets/{ticket}/{action}', [TicketController::class, 'update'])->whereNumber('ticket')
-            ->whereIn('action', ['take', 'assign', 'team', 'status', 'category', 'priority', 'time']);
+            ->whereIn('action', ['take', 'assign', 'team', 'snooze', 'status', 'category', 'priority', 'time']);
         Route::post('uploads', [UploadController::class, 'store']);
         Route::get('attachments/{attachment}', [UploadController::class, 'attachment'])->whereNumber('attachment');
     });

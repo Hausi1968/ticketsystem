@@ -119,6 +119,7 @@ export type TicketSummary = {
   contact: { name: string | null; email: string | null } | null;
   channel: string;
   sla_due_at: string | null;
+  snoozed_until?: string | null;
   error_count: number;
   created_at: string;
   updated_at: string;

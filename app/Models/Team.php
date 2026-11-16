@@ -12,7 +12,9 @@ class Team extends Model
 {
     use BelongsToTenant, HasFactory;
 
-    protected $fillable = ['tenant_id', 'name', 'assignment_mode'];
+    protected $fillable = ['tenant_id', 'name', 'assignment_mode', 'notify_on_assignment'];
+
+    protected $casts = ['notify_on_assignment' => 'boolean'];
 
     public const MANUAL = 'manual';
 

@@ -27,6 +27,7 @@
                             <th style="{{ $th }}">App-Version</th>
                             <th style="{{ $th }}">Update-Stand</th>
                             <th style="{{ $th }}">Zuletzt aktiv</th>
+                            <th style="{{ $th }}"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -42,11 +43,20 @@
                                 </td>
                                 <td style="{{ $td }}">{{ $device->app_update ?? '–' }}</td>
                                 <td style="{{ $td }}">{{ $device->last_used_at?->timezone('Europe/Berlin')->format('d.m.Y H:i') ?? '–' }}</td>
+                                <td style="{{ $td }};text-align:right">
+                                    <button type="button" wire:click="revokeDevice({{ $device->id }})"
+                                            wire:confirm="Gerät „{{ $device->name }}“ abmelden? Die App muss sich danach neu anmelden."
+                                            style="color:rgb(185 28 28);font-weight:600;border:1px solid rgb(252 165 165);border-radius:.5rem;padding:.15rem .6rem;background:transparent;cursor:pointer">Abmelden</button>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
         @endif
+        <p style="font-size:.8rem;margin-top:.75rem;{{ $muted }}">
+            Geräte, die {{ config('anliego.agent_token_days') }} Tage nicht benutzt wurden, werden automatisch abgemeldet.
+            Wer sein Passwort ändert, meldet damit alle seine Geräte ab.
+        </p>
     </x-filament::section>
 </x-filament-panels::page>

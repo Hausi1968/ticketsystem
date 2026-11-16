@@ -9,6 +9,7 @@ use App\Sla\SlaClock;
 use App\Support\TicketNumber;
 use App\Tenancy\BelongsToTenant;
 use App\Tickets\TicketNotifier;
+use Carbon\CarbonInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 
 class Ticket extends Model
 {
@@ -43,6 +45,7 @@ class Ticket extends Model
             'closed_at' => 'datetime',
             'waiting_since' => 'datetime',
             'reminded_at' => 'datetime',
+            'snoozed_until' => 'datetime',
             'sla' => 'array',
             'sla_due_at' => 'datetime',
             'sla_next_check_at' => 'datetime',
@@ -195,6 +198,22 @@ class Ticket extends Model
         return $query->whereIn('status_id', TicketStatus::idsWith(StatusBehaviour::Open, StatusBehaviour::Pending));
     }
 
+    /** Nicht zurückgestellt (Wiedervorlage noch nicht gesetzt oder schon fällig) */
+    public function scopeNotSnoozed(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now()));
+    }
+
+    public function scopeSnoozed(Builder $query): Builder
+    {
+        return $query->whereNotNull('snoozed_until')->where('snoozed_until', '>', now());
+    }
+
+    public function isSnoozed(): bool
+    {
+        return $this->snoozed_until !== null && $this->snoozed_until->isFuture();
+    }
+
     public function scopeWithBehaviour(Builder $query, StatusBehaviour ...$behaviours): Builder
     {
         return $query->whereIn('status_id', TicketStatus::idsWith(...$behaviours));
@@ -279,6 +298,11 @@ class Ticket extends Model
         // Für Erinnerung und automatisches Lösen: seit wann wartet das Ticket auf den Kunden?
         $this->waiting_since = $status->system_key === TicketStatus::WAITING ? now() : null;
         $this->reminded_at = null;
+        if ($status->closes()) {
+            // Geschlossene Tickets brauchen keine Wiedervorlage mehr
+            $this->snoozed_until = null;
+            $this->snoozed_by = null;
+        }
 
         $this->save();
         $this->logEvent('status', $actor, ['from' => $previous?->name, 'to' => $status->name] + $note);
@@ -321,6 +345,38 @@ class Ticket extends Model
 
         if ($team && ! $this->assignee_id && ! $this->isClosed() && ($next = $team->nextAssignee())) {
             $this->assignTo($next, null);
+        } elseif ($team?->notify_on_assignment && ! $this->isClosed()) {
+            app(TicketNotifier::class)->teamAssigned($this, $team, $actor);
+        }
+    }
+
+    /** Wiedervorlage: Das Ticket verschwindet bis zum Zeitpunkt aus „Meine“, „Unzugewiesen“ und „Meine Teams“. */
+    public function snooze(CarbonInterface $until, ?User $actor = null): void
+    {
+        if (! $until->isFuture()) {
+            throw new InvalidArgumentException('Der Zeitpunkt der Wiedervorlage muss in der Zukunft liegen.');
+        }
+
+        $this->forceFill(['snoozed_until' => $until, 'snoozed_by' => $actor?->getKey()])->save();
+        $this->logEvent('snoozed', $actor, ['until' => $until->toIso8601String()]);
+    }
+
+    /**
+     * Wiedervorlage beenden. $reason: 'manual' (aufgehoben), 'due' (Zeitpunkt erreicht) oder 'reply' (Kunde hat geantwortet).
+     * Bei 'due' wird benachrichtigt, wer zurückgestellt hat bzw. der Bearbeiter.
+     */
+    public function unsnooze(?User $actor = null, string $reason = 'manual'): void
+    {
+        if ($this->snoozed_until === null) {
+            return;
+        }
+
+        $by = $this->snoozed_by;
+        $this->forceFill(['snoozed_until' => null, 'snoozed_by' => null])->save();
+        $this->logEvent('unsnoozed', $actor, ['reason' => $reason]);
+
+        if ($reason === 'due') {
+            app(TicketNotifier::class)->snoozeDue($this, $by);
         }
     }
 

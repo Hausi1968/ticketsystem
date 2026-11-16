@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Agent;
 use App\Agent\AgentPresenter;
 use App\Models\AgentToken;
 use App\Models\User;
+use App\Security\SecurityLog;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ class AuthController
         $user = User::query()->where('email', mb_strtolower(trim($data['email'])))->first();
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             RateLimiter::hit($throttleKey, 300);
+            SecurityLog::record(RateLimiter::tooManyAttempts($throttleKey, 5) ? 'lockout' : 'app_login_failed', $user, ['device' => $data['device'] ?? null], $data['email']);
 
             return $this->error('invalid_credentials', 'E-Mail-Adresse oder Passwort ist falsch.', 422);
         }
@@ -85,6 +87,7 @@ class AuthController
         if (! $valid) {
             $pending['tries']++;
             $pending['tries'] >= 5 ? Cache::forget($key) : Cache::put($key, $pending, now()->addMinutes(self::MFA_TTL_MINUTES));
+            SecurityLog::record('app_login_failed', $user, ['device' => $pending['device'], 'grund' => 'Code falsch']);
 
             return $this->error('invalid_code', 'Der Code stimmt nicht.', 422);
         }
@@ -96,7 +99,9 @@ class AuthController
 
     public function logout(Request $request): JsonResponse
     {
-        $request->attributes->get('agent_token')?->delete();
+        $token = $request->attributes->get('agent_token');
+        SecurityLog::record('app_logout', $request->user(), ['device' => $token?->name]);
+        $token?->delete();
 
         return response()->json(['ok' => true]);
     }
@@ -118,6 +123,7 @@ class AuthController
     private function issue(User $user, ?string $device): JsonResponse
     {
         [, $plain] = AgentToken::issue($user, $device ?: 'App');
+        SecurityLog::record('app_login', $user, ['device' => $device ?: 'App'], actor: $user);
 
         return response()->json(['token' => $plain] + AgentPresenter::user($user));
     }

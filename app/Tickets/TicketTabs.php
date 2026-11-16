@@ -14,6 +14,7 @@ class TicketTabs
         'mine' => 'Meine',
         'unassigned' => 'Unzugewiesen',
         'teams' => 'Meine Teams',
+        'snoozed' => 'Zurückgestellt',
         'open' => 'Alle offenen',
         'pending' => 'Wartend',
         'closed' => 'Geschlossen',
@@ -25,10 +26,12 @@ class TicketTabs
         $userId = $user instanceof User ? $user->getKey() : $user;
 
         return match ($tab) {
-            'mine' => $query->where('assignee_id', $userId)->unresolved(),
-            'unassigned' => $query->whereNull('assignee_id')->unresolved(),
+            // Zurückgestellte Tickets (Wiedervorlage) erscheinen in den Arbeitslisten erst wieder, wenn sie fällig sind
+            'mine' => $query->where('assignee_id', $userId)->unresolved()->notSnoozed(),
+            'unassigned' => $query->whereNull('assignee_id')->unresolved()->notSnoozed(),
+            'snoozed' => $query->snoozed()->unresolved(),
             // Offene Tickets der Teams, in denen der Mitarbeiter ist (egal, wer sie bearbeitet)
-            'teams' => $query->whereIn('team_id', DB::table('team_user')->where('user_id', $userId)->select('team_id'))->unresolved(),
+            'teams' => $query->whereIn('team_id', DB::table('team_user')->where('user_id', $userId)->select('team_id'))->unresolved()->notSnoozed(),
             'open' => $query->withBehaviour(StatusBehaviour::Open),
             'pending' => $query->withBehaviour(StatusBehaviour::Pending),
             'closed' => $query->withBehaviour(StatusBehaviour::Closed),

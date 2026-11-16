@@ -45,6 +45,9 @@ class TicketActivity extends Notification implements ShouldQueue
             'new_ticket' => "Neues Ticket {$t['reference']}: {$t['subject']}",
             'assigned' => ($t['actor'] ? "{$t['actor']} hat dir" : 'Dir wurde')." {$t['reference']} zugewiesen: {$t['subject']}",
             'customer_reply' => "Neue Antwort von {$t['from']} zu {$t['reference']}",
+            'team_assigned' => ($t['actor'] ? "{$t['actor']} hat" : 'Es wurde')." {$t['reference']} dem Team {$t['team']} zugeordnet: {$t['subject']}",
+            'mention' => ($t['actor'] ?? 'Jemand')." hat dich in {$t['reference']} erwähnt: {$t['subject']}",
+            'snooze_due' => "Wiedervorlage: {$t['reference']} ist wieder fällig: {$t['subject']}",
             'sla_warning' => "Frist läuft bald ab: {$t['metric']} zu {$t['reference']} bis {$t['due']}",
             'sla_breach' => "Frist überschritten: {$t['metric']} zu {$t['reference']} (fällig {$t['due']})",
             default => "{$t['reference']}: {$t['subject']}",
@@ -82,6 +85,9 @@ class TicketActivity extends Notification implements ShouldQueue
             ->body(trim($t['tenant'].' · '.$t['from'].($t['excerpt'] ? "\n".$t['excerpt'] : '')))
             ->icon(match ($this->event) {
                 'assigned' => 'heroicon-o-user-plus',
+                'team_assigned' => 'heroicon-o-user-group',
+                'mention' => 'heroicon-o-at-symbol',
+                'snooze_due' => 'heroicon-o-bell-alert',
                 'customer_reply' => 'heroicon-o-chat-bubble-left-ellipsis',
                 'sla_warning' => 'heroicon-o-clock',
                 'sla_breach' => 'heroicon-o-exclamation-triangle',

@@ -146,6 +146,12 @@ Kurzform plus `messages`: die Meldung des Nutzers und die Antworten des Teams, j
 - Ist beim erledigten Status „Kundenantwort → neues Ticket“ eingestellt, entsteht ein **Folgeticket**.
   Die Antwort (`201`) ist die Kurzform des Tickets, das die Nachricht bekommen hat, plus `"follow_up": true|false`.
 
+### Neue Antworten anzeigen
+
+Jedes Ticket in `GET /tickets` und `GET /tickets/{nummer}` hat `last_reply_at` (letzte Antwort des Teams, ohne Notizen und automatische Nachrichten) und `unread`: `true`, wenn das Team geantwortet hat, seit der Nutzer das Ticket zuletzt angesehen hat. Damit kann die Anwendung z. B. ein Abzeichen „Neue Antwort“ zeigen.
+
+Als gelesen gilt ein Ticket, wenn die Anwendung es dem Nutzer mit `GET /tickets/{nummer}?mark_read=1` anzeigt (die Antwort enthält dann noch `"unread": true` vom Moment des Öffnens) oder wenn der Nutzer selbst antwortet.
+
 ### Zusammengeführte Tickets
 
 Hat das Team ein Ticket mit einem anderen zusammengeführt, liefern `GET /tickets/{nummer}` und `POST /tickets/{nummer}/messages` für die alte Nummer das Ziel-Ticket (an `reference` in der Antwort erkennbar). Antworten des Nutzers landen also automatisch im richtigen Ticket. In der Liste der Meldungen bleibt das alte Ticket als geschlossen stehen.

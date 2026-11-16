@@ -23,6 +23,8 @@ class TicketPresenter
             'priority' => $ticket->priority->value,
             'created_at' => $ticket->created_at?->toIso8601String(),
             'updated_at' => $ticket->updated_at?->toIso8601String(),
+            'last_reply_at' => $ticket->lastReplyAt()?->toIso8601String(),
+            'unread' => $ticket->hasUnreadReply(), // Antwort des Teams, seit der Nutzer zuletzt hineingeschaut hat
         ];
     }
 

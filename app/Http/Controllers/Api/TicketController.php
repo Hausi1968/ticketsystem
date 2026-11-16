@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Api\ApiTicketService;
 use App\Api\TicketPresenter;
+use App\Enums\MessageType;
 use App\Enums\TicketPriority;
 use App\Models\ApiKey;
 use App\Models\Ticket;
@@ -87,6 +88,7 @@ class TicketController
 
         $tickets = Ticket::query()
             ->with('status', 'category', 'tenant')
+            ->withMax(['messages as last_reply_at' => fn ($query) => $query->where('type', MessageType::Reply)], 'created_at')
             ->whereHas('contact', fn ($query) => $request->filled('external_user_id')
                 ? $query->where('external_user_id', $request->input('external_user_id'))
                 : $query->where('email', mb_strtolower($request->input('email'))))
@@ -97,12 +99,18 @@ class TicketController
         return response()->json(['data' => $tickets->map(fn (Ticket $t) => TicketPresenter::summary($t))->values()]);
     }
 
-    public function show(string $reference): JsonResponse
+    public function show(Request $request, string $reference): JsonResponse
     {
         $number = TicketNumber::parse($reference) ?? abort(404);
         $ticket = Ticket::query()->where('number', $number)->firstOrFail()->mergeTarget()->load('status', 'category', 'tenant');
+        $unread = $ticket->hasUnreadReply();
 
-        return response()->json(TicketPresenter::full($ticket));
+        // Die Anwendung zeigt dem Nutzer das Ticket: ab jetzt gilt die Antwort als gelesen
+        if ($request->boolean('mark_read')) {
+            $ticket->markSeenByCustomer();
+        }
+
+        return response()->json(['unread' => $unread] + TicketPresenter::full($ticket));
     }
 
     /** Antwort des Nutzers auf sein Ticket */

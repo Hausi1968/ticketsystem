@@ -123,6 +123,8 @@ Nach dem Anmelden siehst du die **Übersicht** mit dem Systemstatus:
 - **Offene Tickets** – Anzahl offener Tickets in deinen Mandanten, davon unzugewiesen
 - **Postfächer** – Anzahl aktiver Postfächer und ob ein Abruf fehlgeschlagen ist
 
+![Startseite „Übersicht“ mit Systemstatus](img/screens/uebersicht.png)
+
 ## 5. Die Ticketliste
 
 Menü **Tickets**.
@@ -138,6 +140,8 @@ Menü **Tickets**.
 | **Geschlossen** | erledigte Tickets |
 | **Alle** | alles |
 | *eigene Ansichten* | gespeicherte Filter (siehe unten), mit Lesezeichen-Symbol |
+
+![Ticketliste, Reiter „Alle offenen“](img/screens/ticketliste.png)
 
 ### Suchen, filtern, sortieren
 
@@ -171,6 +175,8 @@ Priorität, Bearbeiter, Frist, Kontakt und die eigenen Felder, darunter der **Ve
 Antworten, internen Notizen (gelb hinterlegt), Eingangsbestätigungen, Anhängen und Ereignissen
 (z. B. „Status geändert“, „zugewiesen an …“).
 
+![Ticketansicht mit Verlauf, interner Notiz und Details](img/screens/ticket.png)
+
 ### Wer arbeitet gerade am Ticket?
 
 Öffnen mehrere Mitarbeiter dasselbe Ticket, zeigt Anliego oben an, wer es gerade ansieht und wer gerade eine
@@ -178,6 +184,9 @@ Antwort oder Notiz schreibt. Kommt während du das Ticket offen hast eine neue N
 Hinweis **„Neue Nachricht seit dem Öffnen“** – so antwortet niemand auf einen veralteten Stand.
 
 ### Aktionen
+
+![Fenster „Antworten“ mit CC, Anhängen, Zeit und Status danach](img/screens/antworten.png)
+
 
 | Aktion | Was passiert |
 |---|---|
@@ -356,6 +365,8 @@ benachrichtigt wird. Die Liste der Teams zeigt Mitglieder und Zuweisungsart.
   die nur mitlesen sollen. Ändern über **Bearbeiten**.
 - **Entfernen** nimmt den Mitarbeiter aus dem Team. Seine Tickets bleiben ihm zugewiesen.
 
+![Team mit Zuweisung „Automatisch reihum“ und Mitgliedern](img/screens/team.png)
+
 
 ### Postfächer (Admin)
 
@@ -458,3 +469,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Erste Fassung: Weboberfläche, Mitarbeiter-App 1.0, Verwaltung, Übersichtsgrafik |
 | 16.11.2026 | Teams: Mitglieder hinzufügen, „Bekommt Zuweisungen“, entfernen |
 | 16.11.2026 | Teams: automatische Zuweisung reihum oder nach Auslastung; App-Updates ohne neue APK |
+| 16.11.2026 | Bildschirmfotos der wichtigsten Seiten |

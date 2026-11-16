@@ -22,6 +22,10 @@ let body = execFileSync('php', ['-r', php], { encoding: 'utf8' });
 body = body.replace(/<p><img src="img\/([^"]+\.svg)" alt="[^"]*" \/><\/p>/g, (_, f) =>
   `<figure class="grafik">${readFileSync(join(root, 'docs/img', f), 'utf8').replace(/<\?xml[^>]*>/, '')}</figure>`);
 
+// Bildschirmfotos mit Bildunterschrift (alt-Text)
+body = body.replace(/<p><img src="([^"]+\.png)" alt="([^"]*)" \/><\/p>/g,
+  '<figure class="foto"><img src="$1" alt="$2"><figcaption>$2</figcaption></figure>');
+
 // Vermerk (Admin) in Überschriften hervorheben
 body = body.replace(/(<h[2-4][^>]*>)(.*?)\((Admin(?:, Supervisor)?)\)(<\/h[2-4]>)/g, '$1$2<span class="admin">$3</span>$4');
 
@@ -45,6 +49,10 @@ const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>
   hr { display: none; }
   figure.grafik { margin: 5mm 0; break-inside: avoid; }
   figure.grafik svg { width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 2mm; }
+  figure.foto { margin: 4mm 0; break-inside: avoid; }
+  figure.foto img { display: block; width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 2mm; }
+  figure.foto figcaption { font-size: 8.5pt; color: #64748b; margin-top: 1.2mm; }
+  p > img { display: block; width: 100%; height: auto; margin: 4mm 0 1mm; border: 1px solid #e2e8f0; border-radius: 2mm; break-inside: avoid; }
   ul, ol { padding-left: 6mm; }
   li { margin: 0.6mm 0; }
 </style></head><body>${body}</body></html>`;

@@ -121,6 +121,28 @@ class Ticket extends Model
         return $ticket;
     }
 
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class)->orderBy('worked_on')->orderBy('id');
+    }
+
+    /** Arbeitszeit erfassen; 0 oder leer = nichts */
+    public function logTime(?int $minutes, ?User $user, ?string $note = null, mixed $workedOn = null, ?TicketMessage $message = null): ?TimeEntry
+    {
+        if (! $minutes || $minutes < 1) {
+            return null;
+        }
+
+        return $this->timeEntries()->create([
+            'tenant_id' => $this->tenant_id,
+            'user_id' => $user?->getKey(),
+            'ticket_message_id' => $message?->getKey(),
+            'minutes' => min($minutes, 1440),
+            'worked_on' => $workedOn ?? now()->toDateString(),
+            'note' => $note ? mb_substr($note, 0, 255) : null,
+        ]);
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(TicketMessage::class)->orderBy('created_at')->orderBy('id');

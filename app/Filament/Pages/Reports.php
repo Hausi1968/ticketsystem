@@ -79,6 +79,13 @@ class Reports extends Page implements HasTable
                     $this->tenant = $data['tenant'] ? (int) $data['tenant'] : null;
                     $this->resetTable();
                 }),
+            Action::make('timeCsv')->label('Zeiten als CSV')->icon(Heroicon::OutlinedClock)->color('gray')
+                ->action(function (): StreamedResponse {
+                    $csv = app(MonthlyReport::class)->timeCsv($this->month, $this->tenant);
+
+                    return response()->streamDownload(fn () => print ($csv), "anliego-zeiten-{$this->month}.csv",
+                        ['Content-Type' => 'text/csv; charset=UTF-8']);
+                }),
             Action::make('csv')->label('CSV herunterladen')->icon(Heroicon::OutlinedArrowDownTray)
                 ->action(function (): StreamedResponse {
                     $report = app(MonthlyReport::class);
@@ -111,7 +118,7 @@ class Reports extends Page implements HasTable
         $columns = [];
         foreach (MonthlyReport::COLUMNS as $key => $label) {
             $column = TextColumn::make($key)->label($label)->placeholder('–');
-            if (str_starts_with($key, 'avg_')) {
+            if (str_starts_with($key, 'avg_') || $key === 'time_h') {
                 $column->numeric(decimalPlaces: 1, locale: 'de');
             }
             if ($key === 'tenant') {

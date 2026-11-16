@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Sla\SlaDisplay;
 use App\Support\BadgeColor;
 use App\Support\TicketNumber;
+use App\Tickets\TicketSearch;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -42,7 +43,9 @@ class TicketsTable
                     ->searchable(query: fn (Builder $query, string $search) => ($number = TicketNumber::parse($search)) !== null
                         ? $query->orWhere('number', $number)
                         : $query),
-                TextColumn::make('subject')->label('Betreff')->searchable()->sortable()->wrap()->limit(80)
+                TextColumn::make('subject')->label('Betreff')->sortable()
+                    // Sucht im Betreff, im Text aller Nachrichten und beim Absender (Name/E-Mail)
+                    ->searchable(query: fn (Builder $query, string $search) => TicketSearch::apply($query, $search))->wrap()->limit(80)
                     ->description(fn (Ticket $record) => $record->contact?->label()),
                 TextColumn::make('status.name')->label('Status')->badge()
                     // nach der Reihenfolge der Status (Neu, Offen, Wartet …), nicht alphabetisch

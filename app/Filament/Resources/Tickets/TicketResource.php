@@ -7,6 +7,7 @@ use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Models\Ticket;
 use App\Support\TicketNumber;
+use App\Tickets\TicketSearch;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -73,7 +74,7 @@ class TicketResource extends Resource
         $number = TicketNumber::parse($search);
 
         $query->where(function (Builder $query) use ($search, $number) {
-            $query->where(fn (Builder $inner) => parent::applyGlobalSearchAttributeConstraints($inner, $search));
+            $query->where(fn (Builder $inner) => TicketSearch::apply($inner, $search));
 
             if ($number !== null) {
                 $query->orWhere('number', $number);

@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
+use App\Models\User;
 use App\Sla\SlaDisplay;
 use App\Support\BadgeColor;
 use App\Support\TicketNumber;
@@ -36,15 +37,21 @@ class TicketsTable
                     ->formatStateUsing(fn (Ticket $record) => $record->reference())
                     ->color(fn (Ticket $record) => Color::hex($record->tenant->color))
                     ->tooltip(fn (Ticket $record) => $record->tenant->name)
+                    ->sortable()
                     // Suche nach "MUS-1000", "#1000" oder "1000"
                     ->searchable(query: fn (Builder $query, string $search) => ($number = TicketNumber::parse($search)) !== null
                         ? $query->orWhere('number', $number)
                         : $query),
-                TextColumn::make('subject')->label('Betreff')->searchable()->wrap()->limit(80)
+                TextColumn::make('subject')->label('Betreff')->searchable()->sortable()->wrap()->limit(80)
                     ->description(fn (Ticket $record) => $record->contact?->label()),
                 TextColumn::make('status.name')->label('Status')->badge()
+                    // nach der Reihenfolge der Status (Neu, Offen, Wartet …), nicht alphabetisch
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy(
+                        TicketStatus::query()->select('sort')->whereColumn('ticket_statuses.id', 'tickets.status_id'), $direction))
                     ->color(fn (Ticket $record) => BadgeColor::resolve($record->status?->color)),
                 TextColumn::make('category.name')->label('Kategorie')->badge()->placeholder('–')
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy(
+                        TicketCategory::query()->select('name')->whereColumn('ticket_categories.id', 'tickets.category_id'), $direction))
                     ->color(fn (Ticket $record) => BadgeColor::resolve($record->category?->color))
                     ->toggleable(),
                 TextColumn::make('priority')->label('Priorität')->badge()->sortable(),
@@ -54,8 +61,12 @@ class TicketsTable
                     ->icon(Heroicon::OutlinedClock)
                     ->tooltip(fn (Ticket $record) => collect(SlaDisplay::rows($record))->map(fn ($r) => "{$r['label']}: {$r['text']}")->join("\n") ?: null)
                     ->toggleable(),
-                TextColumn::make('assignee.name')->label('Bearbeiter')->placeholder('– niemand –'),
+                TextColumn::make('assignee.name')->label('Bearbeiter')->placeholder('– niemand –')
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy(
+                        User::query()->select('name')->whereColumn('users.id', 'tickets.assignee_id'), $direction)),
                 ...self::customFieldColumns(),
+                TextColumn::make('created_at')->label('Erstellt')->dateTime('d.m.Y H:i', 'Europe/Berlin')->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')->label('Aktualisiert')->since()->sortable()
                     ->tooltip(fn (Ticket $record) => $record->updated_at?->timezone('Europe/Berlin')->format('d.m.Y H:i')),
             ])
@@ -97,6 +108,7 @@ class TicketsTable
     {
         return self::listedFields()->map(fn (CustomField $field) => TextColumn::make('fields.'.$field->key)->label($field->label)
             ->placeholder('–')->toggleable()
+            ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('fields->'.$field->key, $direction))
             ->formatStateUsing(fn ($state) => $field->display($state)))->values()->all();
     }
 

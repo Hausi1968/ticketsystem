@@ -1,13 +1,16 @@
 <?php
 
-use App\Models\TicketStatus;
 use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
+use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Inbound\InboundMailProcessor;
 use App\Mail\Outbound\MailboxTransportFactory;
 use App\Models\Attachment;
+use App\Models\CannedResponse;
 use App\Models\Tenant;
 use App\Models\Ticket;
+use App\Models\TicketCategory;
+use App\Models\TicketStatus;
 use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Storage;
@@ -127,7 +130,7 @@ it('findet ein Ticket über seine Nummer und öffnet den Verlauf', function () {
         ->assertCanSeeTableRecords([$this->ticketB])
         ->assertCanNotSeeTableRecords([$this->ticketA]);
 
-    $results = \App\Filament\Resources\Tickets\TicketResource::getGlobalSearchResults('#1000');
+    $results = TicketResource::getGlobalSearchResults('#1000');
     expect($results)->toHaveCount(1)
         ->and($results->first()->url)->toEndWith("/tickets/{$this->ticketA->id}");
 });
@@ -135,7 +138,7 @@ it('findet ein Ticket über seine Nummer und öffnet den Verlauf', function () {
 it('findet über die Nummer keine Tickets fremder Mandanten', function () {
     $this->actingAs($this->agentA);
 
-    expect(\App\Filament\Resources\Tickets\TicketResource::getGlobalSearchResults('VB-1001'))->toHaveCount(0);
+    expect(TicketResource::getGlobalSearchResults('VB-1001'))->toHaveCount(0);
 });
 
 it('zeigt eine verständliche Meldung statt eines Serverfehlers, wenn die Antwort nicht gespeichert werden kann', function () {
@@ -152,8 +155,8 @@ it('zeigt eine verständliche Meldung statt eines Serverfehlers, wenn die Antwor
 });
 
 it('fügt Textbausteine des Mandanten mit ausgefüllten Platzhaltern ein', function () {
-    $own = \App\Models\CannedResponse::create(['tenant_id' => $this->a->id, 'title' => 'Eingang', 'body' => 'Hallo {name}, Ihre Bestellung {nummer} ist da. Gruß {mitarbeiter}']);
-    $foreign = \App\Models\CannedResponse::create(['tenant_id' => $this->b->id, 'title' => 'Fremd', 'body' => 'geheim']);
+    $own = CannedResponse::create(['tenant_id' => $this->a->id, 'title' => 'Eingang', 'body' => 'Hallo {name}, Ihre Bestellung {nummer} ist da. Gruß {mitarbeiter}']);
+    $foreign = CannedResponse::create(['tenant_id' => $this->b->id, 'title' => 'Fremd', 'body' => 'geheim']);
     $this->actingAs($this->agentA);
 
     $page = Livewire::test(ViewTicket::class, ['record' => $this->ticketA->id])
@@ -166,4 +169,22 @@ it('fügt Textbausteine des Mandanten mit ausgefüllten Platzhaltern ein', funct
 
     $page->set('mountedActions.0.data.canned', (string) $foreign->id);
     expect($page->get('mountedActions.0.data.body'))->not->toContain('geheim');
+});
+
+it('sortiert die Ticketliste nach Kategorie, Status, Bearbeiter und Betreff', function () {
+    $this->actingAs(memberOf($this->a, $this->b));
+    $zebra = TicketCategory::create(['name' => 'Zebra']);
+    $apfel = TicketCategory::create(['name' => 'Apfel']);
+    app(TenantContext::class)->runWithoutTenancy(function () use ($zebra, $apfel) {
+        $this->ticketA->update(['category_id' => $zebra->id]);
+        $this->ticketB->update(['category_id' => $apfel->id]);
+    });
+
+    Livewire::test(ListTickets::class)
+        ->sortTable('category.name')->assertCanSeeTableRecords([$this->ticketB, $this->ticketA], inOrder: true)
+        ->sortTable('category.name', 'desc')->assertCanSeeTableRecords([$this->ticketA, $this->ticketB], inOrder: true)
+        ->sortTable('subject')->assertCanSeeTableRecords([$this->ticketA, $this->ticketB], inOrder: true)
+        ->sortTable('status.name')->assertSuccessful()
+        ->sortTable('assignee.name')->assertSuccessful()
+        ->sortTable('number')->assertSuccessful();
 });

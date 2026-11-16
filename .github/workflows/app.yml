@@ -17,6 +17,8 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    # EXPO_TOKEN kann als Repository- oder als Umgebungs-Secret (production) hinterlegt sein
+    environment: production
     defaults:
       run:
         working-directory: mobile

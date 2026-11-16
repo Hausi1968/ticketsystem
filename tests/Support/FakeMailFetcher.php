@@ -16,6 +16,9 @@ class FakeMailFetcher implements MailFetcher
 
     public ?string $failWith = null;
 
+    /** @var list<array{mailbox: int, folder: string, raw: string}> */
+    public array $appended = [];
+
     public function push(Mailbox $mailbox, string ...$raws): static
     {
         $this->inbox[$mailbox->id] = [...($this->inbox[$mailbox->id] ?? []), ...$raws];
@@ -47,5 +50,10 @@ class FakeMailFetcher implements MailFetcher
         }
 
         return 'Verbindung erfolgreich.';
+    }
+
+    public function append(Mailbox $mailbox, string $folder, string $raw): void
+    {
+        $this->appended[] = ['mailbox' => $mailbox->id, 'folder' => $folder, 'raw' => $raw];
     }
 }

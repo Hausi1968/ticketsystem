@@ -2,11 +2,9 @@
 
 namespace App\Mail\Inbound;
 
-use App\Mail\Outbound\AcknowledgementSender;
-use App\Tickets\TicketNotifier;
 use App\Enums\MessageType;
 use App\Enums\StatusBehaviour;
-use App\Models\TicketStatus;
+use App\Mail\Outbound\AcknowledgementSender;
 use App\Models\Attachment;
 use App\Models\Contact;
 use App\Models\Mailbox;
@@ -14,8 +12,10 @@ use App\Models\MailReceipt;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Models\TicketStatus;
 use App\Support\HtmlCleaner;
 use App\Tenancy\TenantContext;
+use App\Tickets\TicketNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -177,6 +177,7 @@ class InboundMailProcessor
             'channel' => 'email',
             'mailbox_id' => $mailbox->getKey(),
             'team_id' => $mailbox->team_id,
+            'category_id' => $mailbox->default_category_id,
             'contact_id' => $contact->getKey(),
             'follow_up_of_id' => $followUpOf?->getKey(),
         ]);

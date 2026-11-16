@@ -30,4 +30,4 @@ Schedule::command('anliego:sla-check')
     ->withoutOverlapping(5);
 
 // Je Mandant: Erinnerung an Kunden, wartende Tickets lösen, gelöste schließen
-Schedule::command('anliego:automation')->hourlyAt(7)->withoutOverlapping(30);
+Schedule::command('anliego:automation')->hourly()->withoutOverlapping(30);

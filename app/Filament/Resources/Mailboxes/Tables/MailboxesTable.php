@@ -26,8 +26,12 @@ class MailboxesTable
                 TextColumn::make('tenant.short_code')->label('Mandant')->badge()
                     ->color(fn ($record) => Color::hex($record->tenant->color)),
                 TextColumn::make('email')->label('Adresse')->description(fn (Mailbox $r) => $r->name)->searchable(),
+                TextColumn::make('usage')->label('Verwendung')->badge()
+                    ->formatStateUsing(fn (string $state) => ['both' => 'Abruf + Versand', 'fetch' => 'Nur Abruf', 'send' => 'Nur Versand'][$state] ?? $state)
+                    ->color(fn (string $state) => $state === 'both' ? 'gray' : 'info'),
                 TextColumn::make('team.name')->label('Team')->placeholder('–'),
-                TextColumn::make('poll_interval_minutes')->label('Intervall')->suffix(' min'),
+                TextColumn::make('poll_interval_minutes')->label('Intervall')->suffix(' min')
+                    ->formatStateUsing(fn ($state, Mailbox $record) => $record->canFetch() ? $state : '–'),
                 IconColumn::make('active')->label('Aktiv')->boolean(),
                 TextColumn::make('last_polled_at')->label('Letzter Abruf')->since()->placeholder('noch nie')
                     ->description(fn (Mailbox $r) => $r->last_error ? 'Fehler: '.str($r->last_error)->limit(60) : null)
@@ -36,6 +40,7 @@ class MailboxesTable
             ->recordActions([
                 ActionGroup::make([
                     Action::make('test')->label('Verbindung testen')->icon(Heroicon::OutlinedSignal)
+                        ->visible(fn (Mailbox $record) => (bool) $record->imap_host)
                         ->action(function (Mailbox $record) {
                             try {
                                 $message = app(MailFetcher::class)->test($record);
@@ -45,6 +50,7 @@ class MailboxesTable
                             }
                         }),
                     Action::make('poll')->label('Jetzt abrufen')->icon(Heroicon::OutlinedArrowPath)
+                        ->visible(fn (Mailbox $record) => $record->canFetch())
                         ->action(function (Mailbox $record) {
                             $exit = Artisan::call('anliego:poll-mailboxes', ['--mailbox' => $record->id, '--force' => true]);
                             $output = trim(Artisan::output());

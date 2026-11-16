@@ -75,6 +75,6 @@ class TenantForm
     private static function mailboxOptions(?Tenant $record): array
     {
         return $record ? Mailbox::query()->withoutGlobalScopes()->where('tenant_id', $record->getKey())
-            ->where('active', true)->orderBy('email')->pluck('email', 'id')->all() : [];
+            ->where('active', true)->where('usage', '!=', 'fetch')->orderBy('email')->pluck('email', 'id')->all() : [];
     }
 }

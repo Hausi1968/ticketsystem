@@ -26,6 +26,7 @@ class PollMailboxes extends Command
     {
         $mailboxes = $tenancy->runWithoutTenancy(fn () => Mailbox::query()
             ->where('active', true)
+            ->where('usage', '!=', 'send')
             ->when($this->option('mailbox'), fn ($q, $id) => $q->whereKey($id))
             ->orderBy('id')
             ->get());

@@ -37,6 +37,12 @@ class TicketController
             'reporter.name' => ['nullable', 'string', 'max:191'],
             'reporter.external_user_id' => ['nullable', 'string', 'max:191'],
             'context' => ['nullable', 'array', 'max:30'],
+            'fields' => ['nullable', 'array', 'max:50'],
+            'fields.*' => ['nullable', function (string $attribute, mixed $value, \Closure $fail) {
+                if (! is_scalar($value) || mb_strlen((string) $value) > 255) {
+                    $fail('Felder müssen einfache Werte bis 255 Zeichen sein.');
+                }
+            }],
             'context.*' => ['nullable', function (string $attribute, mixed $value, \Closure $fail) {
                 if (! is_scalar($value) || mb_strlen((string) $value) > 2000) {
                     $fail('Kontextangaben müssen einfache Werte bis 2000 Zeichen sein.');

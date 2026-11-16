@@ -8,6 +8,7 @@ use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Outbound\ReplySender;
 use App\Models\CannedResponse;
+use App\Models\CustomField;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
 use App\Models\TicketStatus;
@@ -72,6 +73,7 @@ class ViewTicket extends ViewRecord
                 $this->statusAction(),
                 $this->categoryAction(),
                 $this->priorityAction(),
+                $this->fieldsAction(),
                 $this->mergeAction(),
             ])->label('Bearbeiten')->button()->color('gray')->icon(Heroicon::OutlinedAdjustmentsHorizontal),
         ];
@@ -228,6 +230,19 @@ class ViewTicket extends ViewRecord
             ->action(function (array $data) {
                 $priority = $data['priority'] instanceof TicketPriority ? $data['priority'] : TicketPriority::from($data['priority']);
                 $this->record->changePriority($priority, auth()->user());
+                $this->refreshRecord();
+            });
+    }
+
+    private function fieldsAction(): Action
+    {
+        return Action::make('fields')->label('Felder bearbeiten')->icon(Heroicon::OutlinedListBullet)
+            ->visible(fn () => $this->canWrite() && CustomField::for((int) $this->record->tenant_id)->isNotEmpty())
+            ->fillForm(fn () => ['fields' => $this->record->fields ?? []])
+            ->schema(fn () => CustomField::for((int) $this->record->tenant_id)->map->formComponent()->all())
+            ->action(function (array $data) {
+                $this->record->updateFields($data['fields'] ?? [], auth()->user());
+                Notification::make()->success()->title('Felder gespeichert')->send();
                 $this->refreshRecord();
             });
     }

@@ -45,6 +45,6 @@ class TicketPresenter
             ->values()
             ->all();
 
-        return self::summary($ticket) + ['messages' => $messages];
+        return self::summary($ticket) + ['fields' => (object) ($ticket->fields ?? []), 'messages' => $messages];
     }
 }

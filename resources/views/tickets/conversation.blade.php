@@ -48,6 +48,7 @@
                             .(isset($e->data['auto']) ? " (automatisch nach {$e->data['auto']} Tagen)" : '')
                             .(isset($e->data['merged']) ? ' (zusammengeführt)' : ''),
                         'reminder' => 'Erinnerung an den Kunden verschickt',
+                        'fields' => "{$who}: ".collect($e->data['changes'] ?? [])->map(fn ($v, $k) => "{$k} → {$v}")->implode(', '),
                         'rule' => 'Regel „'.($e->data['rule'] ?? '–').'“ angewendet'.(isset($e->data['team']) ? ' · Team → '.$e->data['team'] : ''),
                         'merged_into' => "{$who} hat dieses Ticket in ".($e->data['ticket'] ?? '–').' zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) verschoben)',
                         'merged_from' => "{$who} hat ".($e->data['ticket'] ?? '–').' hierher zusammengeführt ('.($e->data['messages'] ?? 0).' Nachricht(en) übernommen)',
@@ -155,6 +156,18 @@
                 @endif
             </dl>
         </x-filament::section>
+
+        @php $customFields = \App\Models\CustomField::for((int) $ticket->tenant_id); @endphp
+        @if ($customFields->isNotEmpty())
+            <x-filament::section>
+                <x-slot name="heading">Felder</x-slot>
+                <dl class="anl-dl">
+                    @foreach ($customFields as $field)
+                        <dt>{{ $field->label }}</dt><dd style="word-break:break-word">{{ $field->display($ticket->fields[$field->key] ?? null) ?? '–' }}</dd>
+                    @endforeach
+                </dl>
+            </x-filament::section>
+        @endif
 
         @php $slaRows = \App\Sla\SlaDisplay::rows($ticket); @endphp
         @if ($slaRows !== [])

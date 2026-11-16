@@ -79,6 +79,16 @@ Der Name (`status.name`) kann sich ändern, weil Status frei angelegt werden kö
 gleichen E-Mail-Adresse (z. B. aus früheren E-Mails), sonst ein neuer. So landen App-Meldungen und E-Mails einer
 Person beim selben Kontakt.
 
+### Eigene Felder
+
+Sind unter *Verwaltung → Eigene Felder* Felder angelegt (z. B. Kennung `bestellnummer`), kann die Anwendung sie mitschicken:
+
+```json
+"fields": { "bestellnummer": "A-4711", "bereich": "Verkauf" }
+```
+
+Unbekannte Kennungen werden ignoriert, ungültige Werte (z. B. ein Auswahlwert, den es nicht gibt) nicht gespeichert. `GET /tickets/{nummer}` liefert die Felder unter `fields` zurück.
+
 ### Doppelte Tickets vermeiden
 
 Bei Netzwerkfehlern darf die Anwendung die Anfrage wiederholen, wenn sie einen eigenen Schlüssel mitschickt:

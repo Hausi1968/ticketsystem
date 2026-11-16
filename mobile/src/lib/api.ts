@@ -5,6 +5,7 @@
 
 import { Platform } from 'react-native';
 import appConfig from '../../app.json';
+import { updateLabel } from './updates';
 
 export const APP_VERSION: string = appConfig.expo.version;
 
@@ -54,7 +55,7 @@ export async function apiRequest<T>(server: string, path: string, opts: RequestO
     if (v !== undefined && v !== null && v !== '' && v !== false) query.set(k, v === true ? '1' : String(v));
   }
   const qs = query.toString();
-  const headers: Record<string, string> = { Accept: 'application/json', 'X-App-Version': APP_VERSION, 'X-App-Platform': Platform.OS };
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-App-Version': APP_VERSION, 'X-App-Platform': Platform.OS, 'X-App-Update': updateLabel() };
   if (opts.token) headers.Authorization = 'Bearer ' + opts.token;
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
 
@@ -97,6 +98,8 @@ export type Me = {
   email: string;
   is_admin: boolean;
   tenants: { id: number; name: string; short_code: string; role: string | null }[];
+  /** Version der Weboberfläche bzw. des Servers */
+  server?: { version: string; label: string; commit: string | null; built_at: string | null };
 };
 
 export type MfaChallenge = { mfa_required: true; mfa_token: string };

@@ -5,6 +5,8 @@ namespace App\Providers\Filament;
 use App\Filament\Auth\EditProfile;
 use App\Filament\InitialsAvatarProvider;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\Versions;
+use App\Support\Version;
 use Filament\Actions\Action;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
@@ -16,6 +18,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -67,7 +70,12 @@ class AppPanelProvider extends PanelProvider
                 Action::make('handbuch')->label('Handbuch')
                     ->url(fn () => self::handbookUrl(), shouldOpenInNewTab: true)
                     ->icon(Heroicon::OutlinedBookOpen),
+                Action::make('versionen')->label(fn () => 'Version '.Version::number())
+                    ->url(fn () => Versions::getUrl())
+                    ->icon(Heroicon::OutlinedInformationCircle),
             ])
+            // Version unten auf jeder Seite
+            ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.version-footer'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

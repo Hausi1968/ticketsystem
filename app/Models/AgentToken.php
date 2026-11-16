@@ -11,7 +11,7 @@ class AgentToken extends Model
 {
     public const PREFIX = 'agt_';
 
-    protected $fillable = ['user_id', 'name', 'push_token', 'last_used_at'];
+    protected $fillable = ['user_id', 'name', 'push_token', 'last_used_at', 'app_version', 'app_platform', 'app_update'];
 
     protected $hidden = ['token_hash'];
 

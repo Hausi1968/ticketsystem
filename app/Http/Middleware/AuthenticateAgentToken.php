@@ -25,10 +25,26 @@ class AuthenticateAgentToken
         Auth::setUser($token->user);
         $request->attributes->set('agent_token', $token);
 
-        if (! $token->last_used_at || $token->last_used_at->lt(now()->subMinutes(5))) {
-            $token->forceFill(['last_used_at' => now()])->saveQuietly();
+        // Version der App merken (Kopfzeilen X-App-Version, X-App-Platform, X-App-Update)
+        $app = [
+            'app_version' => self::header($request, 'X-App-Version', 30),
+            'app_platform' => self::header($request, 'X-App-Platform', 20),
+            'app_update' => self::header($request, 'X-App-Update', 60),
+        ];
+        $app = array_filter($app, fn ($v) => $v !== null);
+        $changed = collect($app)->contains(fn ($v, $k) => $token->{$k} !== $v);
+
+        if ($changed || ! $token->last_used_at || $token->last_used_at->lt(now()->subMinutes(5))) {
+            $token->forceFill(['last_used_at' => now()] + $app)->saveQuietly();
         }
 
         return $next($request);
+    }
+
+    private static function header(Request $request, string $name, int $max): ?string
+    {
+        $value = trim((string) $request->header($name));
+
+        return $value === '' ? null : mb_substr(preg_replace('/[^\w.\-: ]/u', '', $value), 0, $max);
     }
 }

@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // Version der Weboberfläche (bei jeder für Mitarbeiter sichtbaren Änderung erhöhen, siehe Handbuch Kap. 12)
+    'version' => '1.1.0',
+
     // Zwei-Faktor-Anmeldung für alle Mitarbeiter verpflichtend (empfohlen in Produktion,
     // da jeder Zugang Daten mehrerer Mandanten sieht)
     'require_mfa' => env('ANLIEGO_REQUIRE_MFA', true),

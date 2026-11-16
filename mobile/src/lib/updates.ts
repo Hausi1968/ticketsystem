@@ -5,6 +5,14 @@ import * as Updates from 'expo-updates';
 /** Updates „aus der Luft“ gibt es nur in der installierten App (nicht im Browser, nicht im Entwicklungsmodus) */
 export const updatesEnabled = Platform.OS !== 'web' && Updates.isEnabled && !__DEV__;
 
+/** Stand des laufenden App-Codes: „eingebaut“ (wie installiert) oder Datum des geladenen Updates */
+export function updateLabel(): string {
+  if (!updatesEnabled || Updates.isEmbeddedLaunch || !Updates.createdAt) return 'wie installiert';
+  const d = Updates.createdAt;
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `Update vom ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 /** Sucht nach einer neuen Version und lädt sie herunter; true, wenn eine neue Version bereitliegt */

@@ -2,7 +2,7 @@
 
 # Anliego – Benutzerhandbuch
 
-Stand: 16.11.2026 · gilt für die Weboberfläche und die Mitarbeiter-App (Android) 1.0
+Stand: 16.11.2026 · gilt für die Weboberfläche 1.1.0 und die Mitarbeiter-App (Android) 1.0
 
 Dieses Handbuch beschreibt alles, was Mitarbeiter und Administratoren in Anliego tun können.
 Abschnitte, für die Administratorrechte nötig sind, tragen neben der Überschrift den Vermerk **(Admin)**.
@@ -112,6 +112,18 @@ ein Tipp darauf öffnet das Ticket.
 
 Den Menüpunkt **Handbuch** findest du in der linken Navigation und im Menü oben rechts. Er öffnet diese
 Anleitung als PDF in einem neuen Fenster.
+
+### Versionen
+
+Unten auf jeder Seite steht die Version der Weboberfläche mit dem Stand des letzten Updates, z. B.
+„Anliego 1.1.0 · Stand 16.11.2026 15:05“. Ein Klick darauf (oder **Version …** im Menü oben rechts) öffnet
+die Seite **Versionen**:
+
+- **Weboberfläche**: Versionsnummer, Datum des letzten Updates auf dem Server, PHP- und Laravel-Version
+- **Mitarbeiter-App**: deine angemeldeten Geräte mit App-Version, Update-Stand und wann sie zuletzt aktiv waren.
+  Administratoren sehen hier die Geräte aller Mitarbeiter; ältere App-Versionen sind als **veraltet** markiert.
+
+Bei Fragen an den Support immer beide Versionen angeben.
 
 ## 4. Startseite „Übersicht“
 
@@ -317,8 +329,8 @@ Ist in der Zwischenzeit eine neue Nachricht eingegangen, warnt die App vor dem S
 
 ### Konto
 
-Name, E-Mail, Server, Rolle, Mandanten, App-Version mit Update-Stand, **Benutzerhandbuch** (öffnet dieses
-Handbuch) und **Abmelden**. Nach dem Abmelden kommen auf diesem Gerät keine Push-Meldungen mehr an.
+Name, E-Mail, Server, Rolle, Mandanten, **Versionen** (App-Version mit Update-Stand und Version der
+Weboberfläche), **Nach Updates suchen**, **Benutzerhandbuch** (öffnet dieses Handbuch) und **Abmelden**. Nach dem Abmelden kommen auf diesem Gerät keine Push-Meldungen mehr an.
 
 Profil, Passwort, Zwei-Faktor-Anmeldung und alle Einstellungen der Verwaltung gibt es nur im Browser.
 
@@ -470,3 +482,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Teams: Mitglieder hinzufügen, „Bekommt Zuweisungen“, entfernen |
 | 16.11.2026 | Teams: automatische Zuweisung reihum oder nach Auslastung; App-Updates ohne neue APK |
 | 16.11.2026 | Bildschirmfotos der wichtigsten Seiten |
+| 16.11.2026 | Web 1.1.0: Version unten auf jeder Seite, Seite „Versionen“; App zeigt App- und Web-Version unter Konto |

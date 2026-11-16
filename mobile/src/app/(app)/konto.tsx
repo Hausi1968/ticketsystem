@@ -1,7 +1,8 @@
-import { Alert, Linking, Text } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useSession } from '@/lib/session';
 import { APP_VERSION } from '@/lib/api';
-import { Button, Card, colors, InfoList, Notice, Screen } from '@/components/ui';
+import { updateLabel } from '@/lib/updates';
+import { Button, Card, InfoList, Notice, Screen } from '@/components/ui';
 import { UpdateReadyNotice, UpdateStatus } from '@/components/UpdateNotice';
 
 export default function Account() {
@@ -26,8 +27,13 @@ export default function Account() {
       </Card>
       <Button title="Benutzerhandbuch" icon="book-outline" variant="ghost" onPress={() => Linking.openURL(server + '/handbuch.pdf')} />
       <Notice text="Profil, Passwort, Zwei-Faktor-Anmeldung, Postfächer und alle Einstellungen bearbeitest du im Browser." />
-      <Card title="App">
-        <Text style={{ color: colors.muted }}>Version {APP_VERSION}</Text>
+      <Card title="Versionen">
+        <InfoList
+          items={[
+            ['App', `${APP_VERSION} (${updateLabel()})`],
+            ['Web / Server', me?.server?.label ?? 'unbekannt (Server zu alt oder offline)'],
+          ]}
+        />
         <UpdateStatus />
       </Card>
       <Button title="Abmelden" icon="log-out-outline" variant="danger" onPress={() => (globalThis.confirm ? globalThis.confirm('Abmelden?') && signOut() : confirmSignOut())} />

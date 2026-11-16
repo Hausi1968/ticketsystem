@@ -30,3 +30,4 @@ Thumbs.db
 # Installationsassistent
 /bootstrap/install.hash
 /storage/install-code.txt
+bootstrap/build.json

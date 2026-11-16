@@ -12,6 +12,7 @@ use App\Models\TicketPresence;
 use App\Models\User;
 use App\Support\HtmlCleaner;
 use App\Support\QuoteStripper;
+use App\Support\Version;
 use App\Tickets\BulkEditor;
 use App\Tickets\Presence;
 
@@ -31,6 +32,7 @@ class AgentPresenter
                 'short_code' => $m->tenant?->short_code,
                 'role' => $m->role?->value,
             ])->values()->all(),
+            'server' => Version::toArray(),
         ];
     }
 

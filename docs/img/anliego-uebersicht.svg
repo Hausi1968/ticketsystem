@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 960" width="1400" height="960" font-family="Inter, 'Segoe UI', 'DejaVu Sans', Arial, sans-serif">
+  <defs>
+    <marker id="pfeil" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .h { font-size: 22px; font-weight: 700; fill: #0f172a; }
+      .sp { font-size: 15px; font-weight: 700; fill: #4f46e5; letter-spacing: 1.5px; }
+      .t { font-size: 16px; font-weight: 700; fill: #0f172a; }
+      .s { font-size: 13px; fill: #475569; }
+      .w { font-size: 13px; fill: #ffffff; }
+      .wt { font-size: 16px; font-weight: 700; fill: #ffffff; }
+      .chip { font-size: 13px; fill: #312e81; }
+      .linie { stroke: #64748b; stroke-width: 2; fill: none; marker-end: url(#pfeil); }
+    </style>
+  </defs>
+
+  <rect width="1400" height="960" fill="#ffffff"/>
+  <text x="700" y="44" text-anchor="middle" class="h">Anliego – so hängt alles zusammen</text>
+  <text x="700" y="68" text-anchor="middle" class="s">Mehrere Mandanten, ein Team: Anfragen kommen per E-Mail oder App herein, werden zu Tickets und im Browser oder in der Mitarbeiter-App bearbeitet.</text>
+
+  <!-- Spalte Eingang -->
+  <text x="40" y="112" class="sp">EINGANG</text>
+  <g>
+    <rect x="30" y="126" width="300" height="104" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="48" y="154" class="t">✉ E-Mail an Team-Postfächer</text>
+    <text x="48" y="178" class="s">z. B. bestellung@…, support@…</text>
+    <text x="48" y="198" class="s">Abruf per IMAP alle 5–10 Minuten</text>
+    <text x="48" y="218" class="s">(Cronjob auf dem Server)</text>
+  </g>
+  <g>
+    <rect x="30" y="250" width="300" height="104" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="48" y="278" class="t">📱 Mitgliederverwaltung / App</text>
+    <text x="48" y="302" class="s">Mitglieder melden ein Anliegen</text>
+    <text x="48" y="322" class="s">über die Ticket-Schnittstelle (API)</text>
+    <text x="48" y="342" class="s">mit dem API-Schlüssel des Mandanten</text>
+  </g>
+  <g>
+    <rect x="30" y="374" width="300" height="104" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="48" y="402" class="t">⚠ Automatische Fehlermeldungen</text>
+    <text x="48" y="426" class="s">Programmfehler der Anwendungen</text>
+    <text x="48" y="446" class="s">gleiche Fehler werden zu einem</text>
+    <text x="48" y="466" class="s">Ticket zusammengefasst (Zähler)</text>
+  </g>
+
+  <!-- Pfeile hinein -->
+  <path d="M330,178 C360,178 360,250 392,250" class="linie"/>
+  <path d="M330,302 L392,302" class="linie"/>
+  <path d="M330,426 C360,426 360,350 392,350" class="linie"/>
+
+  <!-- Anliego -->
+  <rect x="396" y="90" width="608" height="560" rx="18" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+  <text x="420" y="122" class="sp">ANLIEGO</text>
+  <text x="980" y="122" text-anchor="end" class="s">eigene Subdomain · Laravel + MySQL</text>
+
+  <g>
+    <rect x="420" y="138" width="560" height="74" rx="10" fill="#ffffff" stroke="#c7d2fe"/>
+    <text x="438" y="164" class="t">1 · Eingang prüfen</text>
+    <text x="438" y="186" class="s">Spam, Newsletter und gesperrte Absender aussortieren · Antwort auf ein</text>
+    <text x="438" y="204" class="s">bestehendes Ticket erkennen · Kontakt anlegen · Eingangsbestätigung senden</text>
+  </g>
+  <g>
+    <rect x="420" y="224" width="560" height="56" rx="10" fill="#ffffff" stroke="#c7d2fe"/>
+    <text x="438" y="250" class="t">2 · Regeln anwenden</text>
+    <text x="438" y="270" class="s">Team, Kategorie und Priorität setzen · zuweisen (fest oder reihum)</text>
+  </g>
+  <g>
+    <rect x="420" y="290" width="560" height="102" rx="10" fill="#4f46e5"/>
+    <text x="438" y="318" class="wt">3 · Ticket  (z. B. ABC-1042)</text>
+    <text x="438" y="344" class="w">Mandant · Team · Status · Kategorie · Priorität · Bearbeiter</text>
+    <text x="438" y="364" class="w">Frist (SLA) · eigene Felder · Zeiterfassung · Verlauf mit Nachrichten,</text>
+    <text x="438" y="382" class="w">Antworten, internen Notizen und Anhängen</text>
+  </g>
+  <g>
+    <rect x="420" y="400" width="272" height="132" rx="10" fill="#ffffff" stroke="#c7d2fe"/>
+    <text x="438" y="428" class="t">🖥 Weboberfläche</text>
+    <text x="438" y="450" class="s">alle Funktionen im Browser:</text>
+    <text x="438" y="470" class="s">Liste, Filter, eigene Ansichten,</text>
+    <text x="438" y="490" class="s">Antworten mit Textbausteinen,</text>
+    <text x="438" y="510" class="s">Zusammenführen, Verwaltung</text>
+  </g>
+  <g>
+    <rect x="708" y="400" width="272" height="132" rx="10" fill="#ffffff" stroke="#c7d2fe"/>
+    <text x="726" y="428" class="t">📲 Mitarbeiter-App</text>
+    <text x="726" y="450" class="s">Android, für unterwegs:</text>
+    <text x="726" y="470" class="s">Tickets ansehen, übernehmen,</text>
+    <text x="726" y="490" class="s">antworten, Notiz, Status, Zeit,</text>
+    <text x="726" y="510" class="s">Fotos anhängen, Push-Meldungen</text>
+  </g>
+  <g>
+    <rect x="420" y="544" width="560" height="88" rx="10" fill="#ffffff" stroke="#c7d2fe" stroke-dasharray="5 4"/>
+    <text x="438" y="570" class="t">⏱ Im Hintergrund (Cronjob)</text>
+    <text x="438" y="592" class="s">Fristen überwachen und warnen · Kunden erinnern, wartende Tickets lösen,</text>
+    <text x="438" y="612" class="s">gelöste schließen · nachts Datensicherung · Aufräumen</text>
+  </g>
+
+  <!-- Pfeile hinaus -->
+  <path d="M1004,250 C1034,250 1034,178 1066,178" class="linie"/>
+  <path d="M1004,330 C1034,330 1034,302 1066,302" class="linie"/>
+  <path d="M1004,420 C1034,420 1034,426 1066,426" class="linie"/>
+
+  <!-- Spalte Ausgang -->
+  <text x="1080" y="112" class="sp">AUSGANG</text>
+  <g>
+    <rect x="1070" y="126" width="300" height="104" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="1088" y="154" class="t">✉ Antwort an den Kunden</text>
+    <text x="1088" y="178" class="s">per E-Mail (SMTP) mit Signatur,</text>
+    <text x="1088" y="198" class="s">Ticketnummer im Betreff, Kopie im</text>
+    <text x="1088" y="218" class="s">Gesendet-Ordner oder per BCC</text>
+  </g>
+  <g>
+    <rect x="1070" y="250" width="300" height="104" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="1088" y="278" class="t">📱 Stand für das Mitglied</text>
+    <text x="1088" y="302" class="s">Status und Antworten erscheinen</text>
+    <text x="1088" y="322" class="s">in der App der Mitgliederverwaltung</text>
+    <text x="1088" y="342" class="s">(„Neue Antwort“)</text>
+  </g>
+  <g>
+    <rect x="1070" y="374" width="300" height="104" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="1088" y="402" class="t">🔔 Hinweise an Mitarbeiter</text>
+    <text x="1088" y="426" class="s">Glocke in der Weboberfläche,</text>
+    <text x="1088" y="446" class="s">E-Mail (im Profil wählbar),</text>
+    <text x="1088" y="466" class="s">Push-Meldung in der App</text>
+  </g>
+
+  <!-- Rollen -->
+  <g>
+    <rect x="1070" y="498" width="300" height="152" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="1088" y="526" class="t">👥 Rollen je Mandant</text>
+    <text x="1088" y="550" class="s">Supervisor: alles im Mandanten,</text>
+    <text x="1088" y="568" class="s">  Teams, Absender sperren</text>
+    <text x="1088" y="590" class="s">Agent: Tickets bearbeiten</text>
+    <text x="1088" y="612" class="s">Light-Agent: lesen und Notizen</text>
+    <text x="1088" y="634" class="s">Administrator: alles + Verwaltung</text>
+  </g>
+  <g>
+    <rect x="30" y="498" width="300" height="152" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="48" y="526" class="t">🏢 Mandanten</text>
+    <text x="48" y="550" class="s">Jeder Mandant hat eigene Postfächer,</text>
+    <text x="48" y="570" class="s">Teams, Kategorien, Fristen und Felder.</text>
+    <text x="48" y="590" class="s">Mitarbeiter sehen nur die Mandanten,</text>
+    <text x="48" y="610" class="s">die sie betreuen – Daten bleiben</text>
+    <text x="48" y="630" class="s">strikt getrennt.</text>
+  </g>
+
+  <!-- Verwaltung -->
+  <rect x="30" y="680" width="1340" height="256" rx="18" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>
+  <text x="54" y="716" class="sp" style="fill:#b45309">VERWALTUNG</text>
+  <rect x="196" y="698" width="72" height="26" rx="13" fill="#f59e0b"/>
+  <text x="232" y="716" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#ffffff">Admin</text>
+  <text x="284" y="716" class="s">Menü „Verwaltung“ – nur für Administratoren (Teams auch für Supervisoren)</text>
+
+  <g class="chip">
+    <rect x="54" y="740" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="70" y="764" class="t" style="font-size:14px">Mandanten</text>
+    <text x="70" y="784" class="s" style="font-size:12px">Automatik, Antwort-Postfach</text>
+
+    <rect x="270" y="740" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="286" y="764" class="t" style="font-size:14px">Mitarbeiter</text>
+    <text x="286" y="784" class="s" style="font-size:12px">Zugang, Mandanten, Rollen</text>
+
+    <rect x="486" y="740" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="502" y="764" class="t" style="font-size:14px">Teams</text>
+    <text x="502" y="784" class="s" style="font-size:12px">auch Supervisor</text>
+
+    <rect x="702" y="740" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="718" y="764" class="t" style="font-size:14px">Postfächer</text>
+    <text x="718" y="784" class="s" style="font-size:12px">IMAP, SMTP, Sperrliste</text>
+
+    <rect x="918" y="740" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="934" y="764" class="t" style="font-size:14px">Kategorien · Status</text>
+    <text x="934" y="784" class="s" style="font-size:12px">Auswahl und Verhalten</text>
+
+    <rect x="1134" y="740" width="212" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="1150" y="764" class="t" style="font-size:14px">Textbausteine</text>
+    <text x="1150" y="784" class="s" style="font-size:12px">mit Platzhaltern</text>
+
+    <rect x="54" y="810" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="70" y="834" class="t" style="font-size:14px">Regeln</text>
+    <text x="70" y="854" class="s" style="font-size:12px">für neue Tickets</text>
+
+    <rect x="270" y="810" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="286" y="834" class="t" style="font-size:14px">Eigene Felder</text>
+    <text x="286" y="854" class="s" style="font-size:12px">je Mandant, auch per API</text>
+
+    <rect x="486" y="810" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="502" y="834" class="t" style="font-size:14px">Fristen (SLA)</text>
+    <text x="502" y="854" class="s" style="font-size:12px">Zeiten, Feiertage, Warnung</text>
+
+    <rect x="702" y="810" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="718" y="834" class="t" style="font-size:14px">Kontakte</text>
+    <text x="718" y="854" class="s" style="font-size:12px">Auskunft und Löschen</text>
+
+    <rect x="918" y="810" width="200" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="934" y="834" class="t" style="font-size:14px">API-Schlüssel</text>
+    <text x="934" y="854" class="s" style="font-size:12px">für die Mitgliederverwaltung</text>
+
+    <rect x="1134" y="810" width="212" height="54" rx="10" fill="#ffffff" stroke="#fcd34d"/>
+    <text x="1150" y="834" class="t" style="font-size:14px">Berichte · Datensicherung</text>
+    <text x="1150" y="854" class="s" style="font-size:12px">Monat, CSV, Backups</text>
+  </g>
+  <text x="54" y="900" class="s">Was die Verwaltung festlegt, wirkt oben im Ablauf: Postfächer → Eingang, Regeln → Schritt 2, Status/Kategorien/Felder/Fristen → Ticket,</text>
+  <text x="54" y="920" class="s">Textbausteine → Antworten, API-Schlüssel → Mitgliederverwaltung, Mandanten-Automatik → Hintergrund.</text>
+</svg>

@@ -5,14 +5,17 @@ namespace App\Providers\Filament;
 use App\Filament\Auth\EditProfile;
 use App\Filament\InitialsAvatarProvider;
 use App\Filament\Pages\Dashboard;
+use Filament\Actions\Action;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -53,6 +56,18 @@ class AppPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->pages([Dashboard::class])
             ->navigationGroups(['Verwaltung'])
+            // Benutzerhandbuch (PDF, erzeugt mit scripts/handbuch-pdf.mjs aus docs/handbuch.md)
+            ->navigationItems([
+                NavigationItem::make('Handbuch')
+                    ->url(fn () => self::handbookUrl(), shouldOpenInNewTab: true)
+                    ->icon(Heroicon::OutlinedBookOpen)
+                    ->sort(90),
+            ])
+            ->userMenuItems([
+                Action::make('handbuch')->label('Handbuch')
+                    ->url(fn () => self::handbookUrl(), shouldOpenInNewTab: true)
+                    ->icon(Heroicon::OutlinedBookOpen),
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -67,5 +82,13 @@ class AppPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    /** Adresse des Handbuchs; der Zeitstempel sorgt dafür, dass nach einem Update nicht die alte Fassung aus dem Cache kommt */
+    public static function handbookUrl(): string
+    {
+        $file = public_path('handbuch.pdf');
+
+        return asset('handbuch.pdf').(is_file($file) ? '?v='.filemtime($file) : '');
     }
 }

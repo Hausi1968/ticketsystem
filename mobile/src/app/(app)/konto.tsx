@@ -1,4 +1,4 @@
-import { Alert, Text } from 'react-native';
+import { Alert, Linking, Text } from 'react-native';
 import { useSession } from '@/lib/session';
 import { APP_VERSION } from '@/lib/api';
 import { Button, Card, colors, InfoList, Notice, Screen } from '@/components/ui';
@@ -24,6 +24,7 @@ export default function Account() {
           ]}
         />
       </Card>
+      <Button title="Benutzerhandbuch" icon="book-outline" variant="ghost" onPress={() => Linking.openURL(server + '/handbuch.pdf')} />
       <Notice text="Profil, Passwort, Zwei-Faktor-Anmeldung, Postfächer und alle Einstellungen bearbeitest du im Browser." />
       <Card title="App">
         <Text style={{ color: colors.muted }}>Version {APP_VERSION}</Text>

@@ -150,3 +150,20 @@ it('zeigt eine verständliche Meldung statt eines Serverfehlers, wenn die Antwor
     expect($this->smtp->sent)->toBe([])
         ->and($this->ticketA->messages()->where('type', 'reply')->count())->toBe(0);
 });
+
+it('fügt Textbausteine des Mandanten mit ausgefüllten Platzhaltern ein', function () {
+    $own = \App\Models\CannedResponse::create(['tenant_id' => $this->a->id, 'title' => 'Eingang', 'body' => 'Hallo {name}, Ihre Bestellung {nummer} ist da. Gruß {mitarbeiter}']);
+    $foreign = \App\Models\CannedResponse::create(['tenant_id' => $this->b->id, 'title' => 'Fremd', 'body' => 'geheim']);
+    $this->actingAs($this->agentA);
+
+    $page = Livewire::test(ViewTicket::class, ['record' => $this->ticketA->id])
+        ->mountAction('reply')
+        ->set('mountedActions.0.data.body', 'Vorab:')
+        ->set('mountedActions.0.data.canned', (string) $own->id);
+
+    expect($page->get('mountedActions.0.data.body'))
+        ->toBe("Vorab:\n\nHallo Erika Muster, Ihre Bestellung ".$this->ticketA->reference().' ist da. Gruß '.$this->agentA->name);
+
+    $page->set('mountedActions.0.data.canned', (string) $foreign->id);
+    expect($page->get('mountedActions.0.data.body'))->not->toContain('geheim');
+});

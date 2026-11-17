@@ -6,6 +6,7 @@ use App\Filament\Auth\EditProfile;
 use App\Filament\InitialsAvatarProvider;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Versions;
+use App\Filament\Resources\Tickets\Pages\ListTickets;
 use App\Support\Version;
 use Filament\Actions\Action;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
@@ -78,6 +79,10 @@ class AppPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.version-footer'))
             // Abmelden direkt sichtbar, nicht nur im Benutzermenü
             ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn () => view('filament.logout-button'))
+            // Flachere obere Leiste auf allen Seiten
+            ->renderHook(PanelsRenderHook::STYLES_AFTER, fn () => view('filament.kompakt-styles'))
+            // Ticketliste: kompakter Kopf, Filter und Tabellenkopf bleiben stehen, Scrollbalken immer sichtbar
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.ticket-list-layout'), scopes: ListTickets::class)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

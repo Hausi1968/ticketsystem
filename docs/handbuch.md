@@ -186,6 +186,10 @@ Menü **Tickets**.
 
 ![Ticketliste, Reiter „Alle offenen“](img/screens/ticketliste.png)
 
+Die Liste füllt das Fenster bis zum unteren Rand. Beim Blättern scrollen nur die Tickets:
+Suchfeld, Filter, Spaltenauswahl und die Spaltenüberschriften bleiben stehen. Passen nicht alle Spalten
+nebeneinander, ist der waagerechte Scrollbalken immer direkt über der Seitenauswahl sichtbar.
+
 ### Suchen, filtern, sortieren
 
 - Die **Suche** findet Tickets über Nummer, Betreff, Nachrichtentexte, Notizen und Absender – immer über
@@ -658,3 +662,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 17.11.2026 | Web 1.5.0: HTML-Signaturen mit eingebettetem Logo je Team (Verwaltung → Teams); beim Antworten **Signatur hinzufügen** in Web und App |
 | 17.11.2026 | Web 1.6.0: Postfächer: E-Mails im Postfach wahlweise erst als gelesen markieren, wenn das Ticket gelöst oder geschlossen ist (bei Wiedereröffnung wieder ungelesen) |
 | 17.11.2026 | Web 1.7.0: Postfächer: „Nur E-Mails ab“ (Datum) – ältere E-Mails werden nicht zu Tickets; beim Anlegen ist heute vorgeschlagen |
+| 17.11.2026 | Web 1.7.1: Ticketliste kompakter (flachere obere Leiste, weniger Abstand über den Reitern); Suche, Filter und Spaltenüberschriften bleiben beim Scrollen stehen, waagerechter Scrollbalken immer sichtbar |

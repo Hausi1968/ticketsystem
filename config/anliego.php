@@ -2,7 +2,7 @@
 
 return [
     // Version der Weboberfläche (bei jeder für Mitarbeiter sichtbaren Änderung erhöhen, siehe Handbuch Kap. 12)
-    'version' => '1.7.0',
+    'version' => '1.7.1',
 
     // App-Anmeldungen, die so viele Tage nicht benutzt wurden, verfallen (0 = nie)
     // Aufbewahrung des Sicherheitsprotokolls in Tagen

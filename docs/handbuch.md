@@ -313,6 +313,18 @@ Anhänge erscheinen bei der jeweiligen Nachricht und lassen sich per Klick öffn
 5. Ist eingestellt, bekommt der Absender eine **Eingangsbestätigung** mit der Ticketnummer.
 6. Die zuständigen Mitarbeiter werden benachrichtigt.
 
+**Gelesen oder ungelesen im Postfach?** Je Postfach ist einstellbar, wann Anliego eine abgeholte E-Mail
+im Postfach (z. B. in Outlook) als gelesen markiert:
+
+- **Beim Abruf** (Standard): sobald das Ticket angelegt ist. Steht ein Ordner für verarbeitete E-Mails
+  im Postfach, wird die E-Mail dorthin verschoben.
+- **Erst wenn das Ticket gelöst oder geschlossen ist**: Die E-Mail bleibt ungelesen, auch wenn das Ticket
+  schon zugewiesen oder in Bearbeitung ist. Erst wenn jemand den Status auf einen schließenden Status
+  setzt (z. B. „Gelöst“ oder „Geschlossen“), markiert Anliego alle E-Mails des Tickets als gelesen
+  und verschiebt sie gegebenenfalls in den Ordner für verarbeitete E-Mails. Wird das Ticket wieder
+  geöffnet (von Hand oder weil der Kunde antwortet), werden sie wieder ungelesen. Das passiert im
+  Hintergrund, meist innerhalb einer Minute.
+
 ### Aus der Mitgliederverwaltung (App)
 
 Mitglieder melden ein Anliegen in der App der Mitgliederverwaltung. Diese schickt es über die
@@ -505,9 +517,17 @@ Spätere Änderungen an der Signatur wirken nur auf neue Antworten; bereits gese
 - **Spam und Sperrliste**: gesperrte Absender (Adressen oder Domains),
   Newsletter und Massen-Mails ignorieren
 - **Eingang (IMAP)**: Server, Port, Verschlüsselung, Benutzername, Passwort, Ordner,
-  verarbeitete E-Mails verschieben nach
+  verarbeitete E-Mails verschieben nach, **im Postfach als gelesen markieren**
+  („beim Abruf“ oder „erst wenn das Ticket gelöst oder geschlossen ist“, siehe Kapitel 7)
 - **Ausgang (SMTP)**: Server, Port, Verschlüsselung, Benutzername, Passwort
 - **Gesendete Antworten in Outlook**: Kopie im IMAP-Ordner „Gesendet“ ablegen oder per BCC an eine Adresse
+
+Mit „erst wenn das Ticket gelöst oder geschlossen ist“ holt Anliego alle **neuen** E-Mails ab, auch
+solche, die jemand in Outlook schon geöffnet hat. Beim Umstellen beginnt Anliego bei der ältesten
+ungelesenen E-Mail des Ordners (gibt es keine, nur bei künftigen E-Mails); ältere, schon gelesene
+E-Mails werden nicht nachträglich zu Tickets. Bereits abgeholte E-Mails werden nie doppelt angelegt.
+Gilt die Einstellung für ein Postfach, sollte in Outlook niemand E-Mails dieses Ordners löschen oder
+verschieben, bevor das Ticket gelöst ist – sonst findet Anliego sie zum Markieren nicht mehr.
 
 **Verbindung testen** prüft IMAP, SMTP und den Gesendet-Ordner. **Jetzt abrufen** holt sofort neue E-Mails.
 Passwörter werden verschlüsselt gespeichert.
@@ -629,3 +649,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | App: Reiter „Meine Teams“ und „Zurückgestellt“ jetzt auch in der Ticketliste der App (die Reiter kommen vom Server) |
 | 17.11.2026 | Web 1.4.0: Übersicht mit zweiter Zeile „Meine Organisationen“, „Meine Teams“, „Organisationen meiner Mitarbeiter“ und „Teams meiner Mitarbeiter“; Klick filtert die Ticketliste |
 | 17.11.2026 | Web 1.5.0: HTML-Signaturen mit eingebettetem Logo je Team (Verwaltung → Teams); beim Antworten **Signatur hinzufügen** in Web und App |
+| 17.11.2026 | Web 1.6.0: Postfächer: E-Mails im Postfach wahlweise erst als gelesen markieren, wenn das Ticket gelöst oder geschlossen ist (bei Wiedereröffnung wieder ungelesen) |

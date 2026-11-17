@@ -93,6 +93,10 @@ class MailboxForm
                     TextInput::make('processed_folder')->label('Verarbeitete E-Mails verschieben nach')
                         ->placeholder('leer = nur als gelesen markieren')->columnSpan(2)
                         ->visible(fn (Get $get) => $get('usage') !== 'send'),
+                    Select::make('mark_seen')->label('Im Postfach als gelesen markieren')
+                        ->options(Mailbox::MARK_SEEN)->default('fetch')->required()->columnSpanFull()
+                        ->helperText('„Erst wenn das Ticket gelöst oder geschlossen ist“: Die E-Mails bleiben im Postfach (z. B. in Outlook) ungelesen, auch wenn das Ticket schon zugewiesen ist. Wird das Ticket gelöst oder geschlossen, markiert Anliego sie als gelesen (und verschiebt sie, falls oben ein Ordner steht); wird es wieder geöffnet, wieder als ungelesen. Anliego holt dann alle neuen E-Mails ab, auch solche, die jemand in Outlook schon geöffnet hat.')
+                        ->visible(fn (Get $get) => $get('usage') !== 'send'),
                 ]),
 
             Section::make('Ausgang (SMTP)')->columns(3)

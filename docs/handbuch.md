@@ -2,7 +2,7 @@
 
 # Anliego – Benutzerhandbuch
 
-Stand: 16.11.2026 · gilt für die Weboberfläche 1.3.0 und die Mitarbeiter-App (Android) 1.0
+Stand: 17.11.2026 · gilt für die Weboberfläche 1.4.0 und die Mitarbeiter-App (Android) 1.0
 
 Dieses Handbuch beschreibt alles, was Mitarbeiter und Administratoren in Anliego tun können.
 Abschnitte, für die Administratorrechte nötig sind, tragen neben der Überschrift den Vermerk **(Admin)**.
@@ -141,7 +141,7 @@ Bei Fragen an den Support immer beide Versionen angeben.
 
 ## 4. Startseite „Übersicht“
 
-Nach dem Anmelden siehst du die **Übersicht** mit dem Systemstatus:
+Nach dem Anmelden siehst du die **Übersicht**. Oben steht der Systemstatus:
 
 - **Mandanten** – wie viele Mandanten du betreust
 - **Cronjob** – ob die Hintergrundaufgaben (Mailabruf, Fristen, Automatik) zuletzt gelaufen sind.
@@ -149,7 +149,22 @@ Nach dem Anmelden siehst du die **Übersicht** mit dem Systemstatus:
 - **Offene Tickets** – Anzahl offener Tickets in deinen Mandanten, davon unzugewiesen
 - **Postfächer** – Anzahl aktiver Postfächer und ob ein Abruf fehlgeschlagen ist
 
-![Startseite „Übersicht“ mit Systemstatus](img/screens/uebersicht.png)
+Darunter folgt eine zweite Zeile mit vier Blöcken. Jeder Eintrag zeigt rechts die Zahl der offenen Tickets.
+Ein **Klick auf den Namen** öffnet die Ticketliste im Reiter **Alle offenen**, gefiltert auf genau diesen
+Mandanten bzw. dieses Team. Den Filter nimmst du in der Ticketliste über das Filter-Symbol wieder heraus,
+den Reiter kannst du wie gewohnt wechseln (z. B. auf **Alle**).
+
+| Block | Zeigt |
+|---|---|
+| **Meine Organisationen** | die Mandanten, die du betreust |
+| **Meine Teams** | die Teams, in denen du Mitglied bist (mit Mandant) |
+| **Organisationen meiner Mitarbeiter** | die Mandanten, in denen du **Supervisor** bist, mit der Zahl der übrigen Mitarbeiter dort |
+| **Teams meiner Mitarbeiter** | alle Teams dieser Mandanten, mit Mandant und Zahl der Mitglieder |
+
+Bist du in keinem Mandanten Supervisor, stehen die Blöcke 3 und 4 nur mit ihrer Überschrift da und bleiben leer.
+Die Administratorrolle allein zählt hier nicht; maßgeblich ist die Rolle **Supervisor** beim Mandanten.
+
+![Startseite „Übersicht“ mit Systemstatus, Organisationen und Teams](img/screens/uebersicht.png)
 
 ## 5. Die Ticketliste
 
@@ -546,3 +561,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Web 1.3.0: App-Geräte abmelden und automatischer Ablauf; Sicherheitsprotokoll und Sicherheits-Kopfzeilen; Team-Benachrichtigung je Team einschaltbar; Wiedervorlage mit Reiter „Zurückgestellt“; Kollegen in Notizen mit @Name erwähnen |
 | 16.11.2026 | Web 1.3.1: Knopf „Abmelden“ oben rechts; Zwei-Faktor-Anmeldung freiwillig; Wartungsseite während eines Updates |
 | 16.11.2026 | App: Reiter „Meine Teams“ und „Zurückgestellt“ jetzt auch in der Ticketliste der App (die Reiter kommen vom Server) |
+| 17.11.2026 | Web 1.4.0: Übersicht mit zweiter Zeile „Meine Organisationen“, „Meine Teams“, „Organisationen meiner Mitarbeiter“ und „Teams meiner Mitarbeiter“; Klick filtert die Ticketliste |

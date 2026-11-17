@@ -21,6 +21,8 @@ class LoopDetector
 
     public const NEWSLETTER = 'ignored_newsletter';
 
+    public const TOO_OLD = 'ignored_old';
+
     public function classify(ParsedEmail $email, Mailbox $mailbox): ?string
     {
         $from = (string) $email->fromEmail;

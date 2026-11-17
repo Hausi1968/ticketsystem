@@ -7,6 +7,7 @@ use App\Models\Mailbox;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\TicketCategory;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -92,6 +93,10 @@ class MailboxForm
                         ->visible(fn (Get $get) => $get('usage') !== 'send'),
                     TextInput::make('processed_folder')->label('Verarbeitete E-Mails verschieben nach')
                         ->placeholder('leer = nur als gelesen markieren')->columnSpan(2)
+                        ->visible(fn (Get $get) => $get('usage') !== 'send'),
+                    DatePicker::make('import_since')->label('Nur E-Mails ab')->native(false)->displayFormat('d.m.Y')
+                        ->default(fn () => today())->columnSpanFull()
+                        ->helperText('Ältere E-Mails im Postfach werden nicht zu Tickets und bleiben unverändert (z. B. der Altbestand beim Einrichten). Leer = alle ungelesenen E-Mails abholen.')
                         ->visible(fn (Get $get) => $get('usage') !== 'send'),
                     Select::make('mark_seen')->label('Im Postfach als gelesen markieren')
                         ->options(Mailbox::MARK_SEEN)->default('fetch')->required()->columnSpanFull()

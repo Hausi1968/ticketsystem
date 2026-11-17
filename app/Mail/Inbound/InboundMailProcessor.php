@@ -79,6 +79,12 @@ class InboundMailProcessor
             return $this->receipt($mailbox, $hash, $email, null, self::DUPLICATE, note: 'Bereits über ein anderes Postfach eingegangen');
         }
 
+        // Älter als „Nur E-Mails ab“ (z. B. Altbestand beim Einrichten): kein Ticket, nichts speichern
+        if ($mailbox->skipsMailFrom($email->date)) {
+            return $this->receipt($mailbox, $hash, $email, null, LoopDetector::TOO_OLD,
+                note: 'Älter als „Nur E-Mails ab“ ('.$mailbox->import_since->format('d.m.Y').')');
+        }
+
         $rawPath = $this->storeRaw($mailbox, $raw);
 
         if ($reason = $this->loopDetector->classify($email, $mailbox)) {

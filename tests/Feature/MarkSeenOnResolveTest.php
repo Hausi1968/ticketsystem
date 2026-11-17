@@ -1,10 +1,13 @@
 <?php
 
 use App\Enums\StatusBehaviour;
+use App\Filament\Resources\Mailboxes\Pages\CreateMailbox;
 use App\Models\Mailbox;
+use App\Models\MailReceipt;
 use App\Models\Tenant;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
+use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Storage;
 
@@ -129,4 +132,28 @@ it('setzt den UID-Merker zurück, wenn Einstellung oder Ordner wechseln', functi
         expect($mailbox->fresh()->imap_last_uid)->toBeNull()
             ->and($mailbox->fresh()->imap_uidvalidity)->toBeNull();
     });
+});
+
+it('legt aus E-Mails vor „Nur E-Mails ab“ keine Tickets an', function () {
+    $this->mailbox->forceFill(['import_since' => '2026-11-14'])->saveQuietly();
+    $this->fetcher->push($this->mailbox,
+        rawMail(['id' => 'alt@kunde.de', 'headers' => ['Date' => 'Fri, 13 Nov 2026 23:00:00 +0100']]),
+        rawMail(['id' => 'neu@kunde.de', 'headers' => ['Date' => 'Sat, 14 Nov 2026 08:00:00 +0100']]),
+    );
+
+    $this->artisan('anliego:poll-mailboxes')->assertSuccessful();
+
+    $receipts = inMandant($this->tenant, fn () => MailReceipt::query()->pluck('outcome', 'message_id'));
+    expect(inMandant($this->tenant, fn () => Ticket::count()))->toBe(1)
+        ->and($receipts['alt@kunde.de'])->toBe('ignored_old')
+        ->and($receipts['neu@kunde.de'])->toBe('created');
+});
+
+it('schlägt beim Anlegen eines Postfachs heute als „Nur E-Mails ab“ vor', function () {
+    expect(Mailbox::factory()->make()->import_since)->toBeNull(); // bestehende/Factory: alle
+    $this->freezeTime();
+    $admin = User::factory()->create(['is_admin' => true]);
+    $this->actingAs($admin);
+    Livewire\Livewire::test(CreateMailbox::class)
+        ->assertSchemaStateSet(['import_since' => today()->toDateString()]);
 });

@@ -25,6 +25,7 @@ class ImapMailFetcher implements MailFetcher
 
             $messages = $folder->query()
                 ->unseen()
+                ->when($mailbox->import_since, fn ($q, $since) => $q->whereSince($since))
                 ->leaveUnread()          // erst nach erfolgreicher Verarbeitung als gelesen markieren
                 ->setFetchOrder('asc')   // älteste zuerst, damit Antworten nach dem Ursprung kommen
                 ->limit($limit)
@@ -60,7 +61,9 @@ class ImapMailFetcher implements MailFetcher
 
         if ($mailbox->imap_last_uid === null || (int) $mailbox->imap_uidvalidity !== $uidValidity) {
             // Erster Abruf in dieser Einstellung: ab der ältesten ungelesenen E-Mail, sonst nur neue
-            $firstUnseen = $folder->query()->unseen()->leaveUnread()->setFetchBody(false)
+            $firstUnseen = $folder->query()->unseen()
+                ->when($mailbox->import_since, fn ($q, $since) => $q->whereSince($since))
+                ->leaveUnread()->setFetchBody(false)
                 ->setFetchOrder('asc')->limit(1)->get()->first()?->getUid();
             $start = $firstUnseen ? (int) $firstUnseen - 1 : max(0, (int) ($status['uidnext'] ?? 1) - 1);
 
@@ -72,6 +75,7 @@ class ImapMailFetcher implements MailFetcher
         // „UID n:*“ liefert immer mindestens die letzte E-Mail, auch wenn ihre UID kleiner ist – deshalb filtern
         $messages = $folder->query()
             ->where('CUSTOM UID '.($lastUid + 1).':*') // Webklex würde den Bereich sonst in Anführungszeichen setzen
+            ->when($mailbox->import_since, fn ($q, $since) => $q->whereSince($since))
             ->leaveUnread()
             ->setFetchOrder('asc')
             ->limit($limit)

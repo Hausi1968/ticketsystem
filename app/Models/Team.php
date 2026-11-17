@@ -3,18 +3,36 @@
 namespace App\Models;
 
 use App\Enums\MembershipRole;
+use App\Mail\Outbound\TeamSignature;
 use App\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Storage;
 
 class Team extends Model
 {
     use BelongsToTenant, HasFactory;
 
-    protected $fillable = ['tenant_id', 'name', 'assignment_mode', 'notify_on_assignment'];
+    protected $fillable = ['tenant_id', 'name', 'assignment_mode', 'notify_on_assignment',
+        'signature_html', 'signature_logo_path', 'signature_logo_width'];
 
-    protected $casts = ['notify_on_assignment' => 'boolean'];
+    protected $casts = ['notify_on_assignment' => 'boolean', 'signature_logo_width' => 'integer'];
+
+    protected static function booted(): void
+    {
+        // Signatur-HTML wird nur bereinigt gespeichert; ein ersetztes Logo wird gelöscht
+        static::saving(function (Team $team) {
+            if ($team->isDirty('signature_html')) {
+                $team->signature_html = TeamSignature::clean($team->signature_html);
+            }
+            $old = $team->getOriginal('signature_logo_path');
+            if ($team->isDirty('signature_logo_path') && $old && $old !== $team->signature_logo_path) {
+                Storage::disk('local')->delete($old);
+            }
+        });
+        static::deleted(fn (Team $team) => $team->signature_logo_path && Storage::disk('local')->delete($team->signature_logo_path));
+    }
 
     public const MANUAL = 'manual';
 

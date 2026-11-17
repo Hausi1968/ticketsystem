@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Agent;
 
 use App\Enums\MembershipRole;
 use App\Enums\TicketPriority;
+use App\Mail\Outbound\TeamSignature;
 use App\Models\Team;
 use App\Models\Tenant;
 use App\Models\TicketCategory;
@@ -37,8 +38,8 @@ class OptionsController
                 'id' => $c->getKey(), 'name' => $c->name, 'tenant_id' => $c->tenant_id,
             ]),
             'tenants' => $tenants,
-            'teams' => Team::query()->whereIn('tenant_id', $tenantIds)->orderBy('name')->get(['id', 'name', 'tenant_id'])
-                ->map(fn (Team $t) => ['id' => $t->getKey(), 'name' => $t->name, 'tenant_id' => (int) $t->tenant_id])->values(),
+            'teams' => Team::query()->whereIn('tenant_id', $tenantIds)->orderBy('name')->get(['id', 'name', 'tenant_id', 'signature_html', 'signature_logo_path'])
+                ->map(fn (Team $t) => ['id' => $t->getKey(), 'name' => $t->name, 'tenant_id' => (int) $t->tenant_id, 'signature' => TeamSignature::has($t)])->values(),
             'users' => User::query()->where('active', true)->orderBy('name')->get()
                 ->filter(fn (User $u) => $u->is_admin || $members->has($u->getKey()))
                 ->map(fn (User $u) => [

@@ -170,7 +170,7 @@ export type Options = {
   categories: { id: number; name: string; tenant_id: number | null }[];
   tenants: Tenant[];
   users: { id: number; name: string; tenant_ids: number[] }[];
-  teams?: { id: number; name: string; tenant_id: number }[];
+  teams?: { id: number; name: string; tenant_id: number; signature?: boolean }[];
 };
 
 /** Antwort der Bearbeitungs-Aktionen */

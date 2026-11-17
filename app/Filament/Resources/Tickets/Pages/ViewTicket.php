@@ -8,6 +8,7 @@ use App\Enums\TicketPriority;
 use App\Filament\Resources\Tickets\Tables\TicketsTable;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Mail\Outbound\ReplySender;
+use App\Mail\Outbound\TeamSignature;
 use App\Models\CannedResponse;
 use App\Models\CustomField;
 use App\Models\Team;
@@ -25,6 +26,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -194,7 +196,12 @@ class ViewTicket extends ViewRecord
                         }
                         $set('canned', null);
                     }),
-                Textarea::make('body')->label('Nachricht')->required()->rows(10)->autosize(),
+                Textarea::make('body')->label('Nachricht')->required()->rows(10)->autosize()
+                    ->hintActions([$this->addSignatureAction(), $this->removeSignatureAction()]),
+                Hidden::make('signature_team_id'),
+                View::make('tickets.signature-preview')
+                    ->visible(fn (Get $get) => filled($get('signature_team_id')))
+                    ->viewData(fn (Get $get) => $this->signaturePreview($get('signature_team_id'))),
                 TagsInput::make('cc')->label('CC')->placeholder('weitere E-Mail-Adressen')
                     ->nestedRecursiveRules(['email'])
                     ->default(fn () => $this->record->participants->pluck('email')->all()),
@@ -214,6 +221,9 @@ class ViewTicket extends ViewRecord
                         $this->record, auth()->user(), $data['body'], $data['cc'] ?? [],
                         $this->storeUploads($data['files'] ?? []),
                         TicketStatus::query()->findOrFail($data['status_id']),
+                        filled($data['signature_team_id'] ?? null)
+                            ? TeamSignature::availableFor($this->record)->firstWhere('id', (int) $data['signature_team_id'])
+                            : null,
                     );
                     $this->record->logTime((int) ($data['minutes'] ?? 0), auth()->user(), message: $message);
                 } catch (Throwable $e) {
@@ -230,6 +240,42 @@ class ViewTicket extends ViewRecord
 
                 $this->refreshRecord();
             });
+    }
+
+    /** „Signatur hinzufügen“ am Antwortfeld: hängt die HTML-Signatur eines Teams des Mandanten an */
+    private function addSignatureAction(): Action
+    {
+        $teams = fn () => TeamSignature::availableFor($this->record);
+
+        return Action::make('addSignature')->label('Signatur hinzufügen')->icon(Heroicon::OutlinedIdentification)
+            ->visible(fn (Get $get) => blank($get('signature_team_id')) && $teams()->isNotEmpty())
+            ->modalHeading('Signatur hinzufügen')->modalWidth('md')->modalSubmitActionLabel('Hinzufügen')
+            ->modalHidden(fn () => $teams()->count() === 1)
+            ->schema(fn () => $teams()->count() > 1 ? [
+                Select::make('team_id')->label('Signatur von Team')->required()
+                    ->options($teams()->pluck('name', 'id'))->default($teams()->first()?->getKey()),
+            ] : [])
+            ->action(fn (array $data, Set $set) => $set('signature_team_id', (int) ($data['team_id'] ?? $teams()->first()?->getKey())));
+    }
+
+    private function removeSignatureAction(): Action
+    {
+        return Action::make('removeSignature')->label('Signatur entfernen')->icon(Heroicon::OutlinedXMark)->color('gray')
+            ->visible(fn (Get $get) => filled($get('signature_team_id')))
+            ->action(fn (Set $set) => $set('signature_team_id', null));
+    }
+
+    /** Vorschau der gewählten Signatur unter dem Antwortfeld */
+    private function signaturePreview(mixed $teamId): array
+    {
+        $team = filled($teamId) ? TeamSignature::availableFor($this->record)->firstWhere('id', (int) $teamId) : null;
+
+        return [
+            'team' => $team,
+            'srcdoc' => $team ? TeamSignature::previewDocument(
+                TeamSignature::render($team, auth()->user(), TeamSignature::logoDataUrl($team->signature_logo_path))
+            ) : null,
+        ];
     }
 
     private function noteAction(): Action

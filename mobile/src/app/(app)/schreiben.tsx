@@ -26,6 +26,8 @@ export default function Write() {
   const [cc, setCc] = useState('');
   const [statusId, setStatusId] = useState<number | null>(null);
   const [statusSheet, setStatusSheet] = useState(false);
+  const [signatureId, setSignatureId] = useState<number | null>(null);
+  const [signatureSheet, setSignatureSheet] = useState(false);
   const [mins, setMins] = useState('');
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [sending, setSending] = useState(false);
@@ -110,7 +112,9 @@ export default function Write() {
       body: body.trim(),
       minutes: parseInt(mins, 10) || undefined,
       upload_ids: uploads.filter((u) => u.id).map((u) => u.id),
-      ...(isReply ? { cc: ccList, status_id: statusId ?? undefined, last_message_id: seenMessageId.current ?? undefined, force } : {}),
+      ...(isReply
+        ? { cc: ccList, status_id: statusId ?? undefined, signature_team_id: signatureId ?? undefined, last_message_id: seenMessageId.current ?? undefined, force }
+        : {}),
     };
     setSending(true);
     try {
@@ -150,6 +154,12 @@ export default function Write() {
   }
 
   const selectedStatus = options?.statuses.find((s) => s.id === statusId);
+  // Team-Signaturen des Mandanten; das Team des Tickets zuerst
+  const signatures = (options?.teams ?? [])
+    .filter((t) => t.signature && t.tenant_id === ticket.tenant.id)
+    .sort((a, b) => Number(b.id === ticket.team?.id) - Number(a.id === ticket.team?.id));
+  const selectedSignature = signatures.find((t) => t.id === signatureId);
+  const addSignature = () => (signatures.length === 1 ? setSignatureId(signatures[0].id) : setSignatureSheet(true));
   const newer = ticket.messages.filter((m) => seenMessageId.current !== null && m.id > seenMessageId.current && m.type !== 'auto');
   const lastCustomer = [...ticket.messages].reverse().find((m) => m.type === 'customer');
 
@@ -203,6 +213,21 @@ export default function Write() {
             placeholderTextColor={colors.muted}
             autoFocus
           />
+          {isReply && signatures.length > 0 && (
+            <View style={s.signature}>
+              {selectedSignature ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.ok} />
+                  <Text style={{ flex: 1, color: colors.text }}>Signatur „{selectedSignature.name}“ wird angehängt</Text>
+                  <Pressable onPress={() => setSignatureId(null)} hitSlop={10} accessibilityLabel="Signatur entfernen">
+                    <Ionicons name="close" size={20} color={colors.muted} />
+                  </Pressable>
+                </>
+              ) : (
+                <AttachButton icon="id-card-outline" label="Signatur hinzufügen" onPress={addSignature} />
+              )}
+            </View>
+          )}
           {!isReply && (
             <View style={{ marginTop: 6 }}>
               <Text style={{ fontSize: 12, color: colors.muted }}>Kollegen erwähnen: antippen fügt @Name ein, der Kollege bekommt einen Hinweis.</Text>
@@ -270,6 +295,17 @@ export default function Write() {
         }}
         onClose={() => setStatusSheet(false)}
       />
+      <SelectSheet
+        visible={signatureSheet}
+        title="Signatur hinzufügen"
+        options={signatures.map((t) => ({ value: String(t.id), label: t.name }))}
+        selected={signatureId ? String(signatureId) : ''}
+        onSelect={(v) => {
+          setSignatureId(v ? Number(v) : null);
+          setSignatureSheet(false);
+        }}
+        onClose={() => setSignatureSheet(false)}
+      />
     </>
   );
 }
@@ -292,5 +328,6 @@ const s = StyleSheet.create({
   select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   attachRow: { flexDirection: 'row', gap: 8 },
   attach: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: BRAND, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12 },
+  signature: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   upload: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
 });

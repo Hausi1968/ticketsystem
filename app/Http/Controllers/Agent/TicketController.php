@@ -7,6 +7,7 @@ use App\Enums\MessageType;
 use App\Enums\TicketPriority;
 use App\Filament\Resources\Tickets\Pages\ViewTicket;
 use App\Mail\Outbound\ReplySender;
+use App\Mail\Outbound\TeamSignature;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
@@ -90,7 +91,16 @@ class TicketController
             'upload_ids.*' => ['string', 'max:64'],
             'last_message_id' => ['nullable', 'integer'],
             'force' => ['nullable', 'boolean'],
+            'signature_team_id' => ['nullable', 'integer'],
         ]);
+
+        $signature = null;
+        if (! empty($data['signature_team_id'])) {
+            $signature = TeamSignature::availableFor($record)->firstWhere('id', (int) $data['signature_team_id']);
+            if (! $signature) {
+                return response()->json(['error' => 'signature', 'message' => 'Diese Signatur gibt es für den Mandanten des Tickets nicht (mehr).'], 422);
+            }
+        }
 
         if ($conflict = $this->newMessagesSince($record, $user, $data)) {
             return $conflict;
@@ -102,7 +112,7 @@ class TicketController
 
         try {
             $message = app(ReplySender::class)->reply($record, $user, $data['body'], $data['cc'] ?? $record->participants()->pluck('email')->all(),
-                $this->uploads($user, $data['upload_ids'] ?? []), $status);
+                $this->uploads($user, $data['upload_ids'] ?? []), $status, $signature);
             $record->logTime((int) ($data['minutes'] ?? 0), $user, message: $message);
         } catch (Throwable $e) {
             report($e);

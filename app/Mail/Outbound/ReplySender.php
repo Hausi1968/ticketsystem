@@ -6,10 +6,12 @@ use App\Enums\MessageType;
 use App\Jobs\DeliverTicketMessage;
 use App\Mail\Inbound\MailFetcher;
 use App\Models\Mailbox;
+use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\TicketStatus;
 use App\Models\User;
+use App\Support\HtmlCleaner;
 use App\Tickets\Mentions;
 use App\Tickets\TicketNotifier;
 use Illuminate\Support\Facades\DB;
@@ -33,12 +35,18 @@ class ReplySender
     /**
      * @param  list<string>  $cc
      * @param  list<array{path: string, name: string, mime?: ?string}>  $files  Dateien auf der lokalen Disk
+     * @param  ?Team  $signature  Team, dessen HTML-Signatur angehängt wird („Signatur hinzufügen“); ersetzt die persönliche Signatur
      */
-    public function reply(Ticket $ticket, User $agent, string $body, array $cc = [], array $files = [], ?TicketStatus $newStatus = null): TicketMessage
+    public function reply(Ticket $ticket, User $agent, string $body, array $cc = [], array $files = [], ?TicketStatus $newStatus = null, ?Team $signature = null): TicketMessage
     {
         $mailbox = $this->mailboxFor($ticket);
 
-        $message = DB::transaction(function () use ($ticket, $agent, $body, $cc, $files, $mailbox, $newStatus) {
+        if ($signature && ((int) $signature->tenant_id !== (int) $ticket->tenant_id || ! TeamSignature::has($signature))) {
+            throw new RuntimeException('Diese Signatur gehört nicht zum Mandanten des Tickets.');
+        }
+        $signatureHtml = $signature ? TeamSignature::render($signature, $agent) : null;
+
+        $message = DB::transaction(function () use ($ticket, $agent, $body, $cc, $files, $mailbox, $newStatus, $signature, $signatureHtml) {
             $message = $ticket->messages()->create([
                 'tenant_id' => $ticket->tenant_id,
                 'type' => MessageType::Reply,
@@ -48,7 +56,13 @@ class ReplySender
                 'to' => [['email' => $ticket->contact->email, 'name' => $ticket->contact->name]],
                 'cc' => array_map(fn ($e) => ['email' => mb_strtolower(trim($e)), 'name' => null], $cc),
                 'subject' => $this->subjectFor($ticket),
-                'body_text' => $this->withSignature($ticket, $agent, $body),
+                'body_text' => $signatureHtml !== null
+                    ? rtrim($body)."\n\n-- \n".TeamSignature::text($signatureHtml)
+                    : $this->withSignature($ticket, $agent, $body),
+                'body_html' => $signatureHtml !== null
+                    ? '<div>'.nl2br(e(rtrim($body)), false).'</div><div style="margin-top:16px">'.$signatureHtml.'</div>'
+                    : null,
+                'signature_team_id' => $signature?->getKey(),
                 'message_id' => $this->newMessageId($ticket, $mailbox),
                 'in_reply_to' => $ticket->messages()->whereNotNull('message_id')->where('type', MessageType::Customer)->reorder()->latest('id')->value('message_id'),
                 'references' => $this->referencesFor($ticket),
@@ -56,6 +70,9 @@ class ReplySender
             ]);
 
             $this->attachFiles($message, $files);
+            if ($signature?->signature_logo_path) {
+                $this->attachSignatureLogo($message, $signature);
+            }
 
             $ticket->forceFill([
                 'last_agent_message_at' => now(),
@@ -176,7 +193,9 @@ class ReplySender
             ->replyTo(new Address($mailbox->email, $mailbox->displayName()))
             ->subject((string) $message->subject)
             ->text((string) $message->body_text)
-            ->html($this->htmlBody((string) $message->body_text));
+            ->html($message->body_html !== null && $message->type === MessageType::Reply
+                ? $this->wrapHtml($this->restoreCids($message->body_html))
+                : $this->htmlBody((string) $message->body_text));
 
         foreach ($message->to ?? [] as $recipient) {
             $email->addTo(new Address($recipient['email'], (string) ($recipient['name'] ?? '')));
@@ -207,7 +226,11 @@ class ReplySender
         }
 
         foreach ($message->attachments as $attachment) {
-            $email->attach(Storage::disk($attachment->disk)->get($attachment->path), $attachment->filename, $attachment->mime_type);
+            $contents = Storage::disk($attachment->disk)->get($attachment->path);
+            $attachment->inline && $attachment->content_id
+                // Eingebettetes Bild (Signatur-Logo): im HTML per cid:Name referenziert
+                ? $email->embed($contents, $attachment->content_id, $attachment->mime_type)
+                : $email->attach($contents, $attachment->filename, $attachment->mime_type);
         }
 
         return $email;
@@ -262,9 +285,48 @@ class ReplySender
 
     private function htmlBody(string $text): string
     {
-        $html = nl2br(e($text), false);
+        return $this->wrapHtml(nl2br(e($text), false));
+    }
 
-        return '<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">'.$html.'</body></html>';
+    private function wrapHtml(string $html): string
+    {
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">'.$html.'</body></html>';
+    }
+
+    /** Platzhalter-Adressen eingebetteter Bilder wieder zu cid:… machen */
+    private function restoreCids(string $html): string
+    {
+        return preg_replace_callback(
+            '#'.preg_quote(HtmlCleaner::CID_PREFIX, '#').'([^"\'\s>]+)#',
+            fn ($m) => 'cid:'.rawurldecode($m[1]),
+            $html,
+        );
+    }
+
+    /** Logo der Signatur als eingebettetes Bild an die Nachricht hängen (Kopie, damit spätere Änderungen am Team nichts verändern) */
+    private function attachSignatureLogo(TicketMessage $message, Team $team): void
+    {
+        $disk = Storage::disk('local');
+        if (! $disk->exists($team->signature_logo_path)) {
+            return;
+        }
+
+        $contents = $disk->get($team->signature_logo_path);
+        $target = sprintf('tenants/%d/attachments/%s/%s', $message->tenant_id, now()->format('Y/m'), Str::uuid());
+        $disk->put($target, $contents);
+        $mime = $disk->mimeType($target) ?: 'image/png';
+
+        $message->attachments()->create([
+            'tenant_id' => $message->tenant_id,
+            'filename' => TeamSignature::LOGO_NAME.'.'.(['image/jpeg' => 'jpg', 'image/gif' => 'gif'][$mime] ?? 'png'),
+            'mime_type' => $mime,
+            'size' => strlen($contents),
+            'disk' => 'local',
+            'path' => $target,
+            'content_id' => TeamSignature::LOGO_NAME,
+            'inline' => true,
+            'sha256' => hash('sha256', $contents),
+        ]);
     }
 
     private function attachFiles(TicketMessage $message, array $files): void

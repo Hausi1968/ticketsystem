@@ -2,7 +2,7 @@
 
 # Anliego – Benutzerhandbuch
 
-Stand: 17.11.2026 · gilt für die Weboberfläche 1.4.0 und die Mitarbeiter-App (Android) 1.0
+Stand: 17.11.2026 · gilt für die Weboberfläche 1.5.0 und die Mitarbeiter-App (Android) 1.0
 
 Dieses Handbuch beschreibt alles, was Mitarbeiter und Administratoren in Anliego tun können.
 Abschnitte, für die Administratorrechte nötig sind, tragen neben der Überschrift den Vermerk **(Admin)**.
@@ -239,7 +239,7 @@ Hinweis **„Neue Nachricht seit dem Öffnen“** – so antwortet niemand auf e
 | Aktion | Was passiert |
 |---|---|
 | **Übernehmen** | Du wirst Bearbeiter des Tickets. |
-| **Antworten** | E-Mail an den Kunden (bzw. Antwort in der Mitglieder-App). Du kannst einen **Textbaustein** einfügen, weitere Empfänger in **CC** setzen, **Anhänge** hochladen, die aufgewendete **Zeit** in Minuten eintragen und den **Status danach** wählen (z. B. „Warten auf Kunde“). Die Signatur wird automatisch angehängt, die Ticketnummer steht im Betreff. Antwortet der Kunde, landet seine E-Mail wieder in diesem Ticket. |
+| **Antworten** | E-Mail an den Kunden (bzw. Antwort in der Mitglieder-App). Du kannst einen **Textbaustein** einfügen, weitere Empfänger in **CC** setzen, **Anhänge** hochladen, die aufgewendete **Zeit** in Minuten eintragen und den **Status danach** wählen (z. B. „Warten auf Kunde“). Deine persönliche Signatur wird automatisch angehängt, die Ticketnummer steht im Betreff. Mit **Signatur hinzufügen** (rechts über dem Textfeld) setzt du stattdessen die gestaltete **Team-Signatur** des Auftraggebers unter die Antwort (siehe „Signatur hinzufügen“ unten). Antwortet der Kunde, landet seine E-Mail wieder in diesem Ticket. |
 | **Interne Notiz** | Nur für Mitarbeiter sichtbar, geht nie an den Kunden. Auch Light-Agents dürfen Notizen schreiben. Zeit kann mit erfasst werden. **Kollegen erwähnen:** Schreibe `@Name` in den Text (z. B. `@Anna` oder `@Anna Beispiel`) oder wähle unter **Kollegen benachrichtigen** aus. Die Kollegen bekommen einen Hinweis mit Link zum Ticket. Erwähnt werden können nur Mitarbeiter, die den Mandanten betreuen. Der Vorname allein reicht, wenn er eindeutig ist. |
 | **Zuweisen (Team / Bearbeiter)** | Unter **Bearbeiten**: Team und Bearbeiter ändern. Ein Ticket kann einem Team, einer Person oder beidem zugeordnet sein. Der neue Bearbeiter wird benachrichtigt. Bleibt der Bearbeiter leer und verteilt das Team automatisch (reihum oder nach Auslastung), bekommt das Ticket gleich ein Teammitglied. |
 | **Zurückstellen (Wiedervorlage)** | Unter **Bearbeiten**: Das Ticket bis **Morgen 8 Uhr**, **In 3 Tagen**, **In 1 Woche** oder zu einem eigenen Zeitpunkt zurückstellen. Bis dahin verschwindet es aus „Meine“, „Unzugewiesen“ und „Meine Teams“ und steht im Reiter **Zurückgestellt**. Zum Zeitpunkt kommt es zurück, und du (sowie der Bearbeiter) bekommst einen Hinweis. Antwortet der Kunde vorher, kommt es sofort zurück. **Wiedervorlage aufheben** holt es von Hand zurück. Fristen (SLA) laufen währenddessen weiter. |
@@ -254,6 +254,30 @@ Hinweis **„Neue Nachricht seit dem Öffnen“** – so antwortet niemand auf e
 
 Sperrt die Absender-Adresse oder die ganze Domain für das Postfach des Tickets. Künftige E-Mails dieses
 Absenders werden nicht mehr zu Tickets. Die Sperrliste lässt sich später im Postfach bearbeiten.
+
+### Signatur hinzufügen
+
+Für jedes Team kann eine **HTML-Signatur** im Stil des Auftraggebers hinterlegt sein, mit Logo, Farben,
+Links und Kontaktdaten (Pflege siehe Kapitel 10, „Teams“). So geht es beim Antworten:
+
+1. **Antworten** öffnen und den Text schreiben.
+2. Rechts über dem Textfeld auf **Signatur hinzufügen** klicken. Gibt es im Mandanten mehrere Team-Signaturen,
+   wählst du das Team aus; das Team des Tickets ist vorausgewählt.
+3. Unter dem Textfeld erscheint eine **Vorschau** der Signatur, so wie der Kunde sie sieht.
+   **Signatur entfernen** nimmt sie wieder heraus.
+4. **Senden**.
+
+![Antwortfenster mit hinzugefügter Team-Signatur und Logo](img/screens/antworten-signatur.png)
+
+Gut zu wissen:
+
+- Mit Team-Signatur entfällt deine persönliche Text-Signatur, damit der Kunde nicht zwei Signaturen bekommt.
+  Dein Name kommt über den Platzhalter `{{name}}` in die Team-Signatur.
+- Das Logo ist **in die E-Mail eingebettet**. Es erscheint auch dann, wenn der Kunde das Nachladen von
+  Bildern ausgeschaltet hat (z. B. in Outlook).
+- Die Nur-Text-Fassung der E-Mail enthält die Signatur als Text.
+- Im Verlauf steht die Signatur als Text unter der Antwort; **Originalansicht (HTML)** zeigt sie mit Logo.
+- Angeboten werden nur Signaturen von Teams des Mandanten, zu dem das Ticket gehört.
 
 ### Status und was der Kunde danach tut
 
@@ -365,6 +389,8 @@ Beim ersten Start fragt die App, ob sie Mitteilungen senden darf – erlauben, s
 ### Antworten und Notizen
 
 Text schreiben, optional **CC**, **Status danach**, **Minuten**, **Fotos oder Dateien** anhängen, senden.
+Unter dem Textfeld fügt **Signatur hinzufügen** die Team-Signatur mit Logo an (bei mehreren Teams des
+Mandanten zur Auswahl). Das Kreuz daneben nimmt sie wieder heraus.
 Ist in der Zwischenzeit eine neue Nachricht eingegangen, warnt die App vor dem Senden.
 
 ### Konto
@@ -428,6 +454,46 @@ Mitglieder einen Hinweis (Glocke, App und je nach Profil E-Mail).
 - **Entfernen** nimmt den Mitarbeiter aus dem Team. Seine Tickets bleiben ihm zugewiesen.
 
 ![Team mit Zuweisung „Automatisch reihum“ und Mitgliedern](img/screens/team.png)
+
+#### E-Mail-Signatur des Teams (Admin, Supervisor)
+
+Im Formular des Teams gibt es den Bereich **E-Mail-Signatur**. Damit bekommt jeder Auftraggeber
+(Mandant) bzw. jedes Team eine eigene, gestaltete Signatur. Mitarbeiter setzen sie beim Antworten per
+**Signatur hinzufügen** unter ihre Nachricht.
+
+- **Signatur (HTML)**: HTML-Code einfügen, z. B. die Signatur aus Outlook oder von der Werbeagentur.
+  Erlaubt sind Gestaltung mit `style`, Tabellen, Farben, Schriften und Links (`https:`, `mailto:`, `tel:`).
+  Skripte, Formulare, iframes und Event-Handler entfernt Anliego beim Speichern. Externe Bilder nur per `https`.
+- **Platzhalter**, die beim Antworten ersetzt werden:
+
+| Platzhalter | Wird zu |
+|---|---|
+| `{{name}}` | Name des antwortenden Mitarbeiters |
+| `{{vorname}}` | Vorname des antwortenden Mitarbeiters |
+| `{{team}}` | Name des Teams |
+| `{{mandant}}` | Name des Mandanten |
+| `{{logo}}` | das hochgeladene Logo |
+
+- **Logo**: PNG, JPG oder GIF bis 500 KB. Es wird beim Versand **in die E-Mail eingebettet** und erscheint
+  so in allen gängigen Mailprogrammen, auch ohne „Bilder nachladen“. SVG bitte vorher in PNG umwandeln,
+  viele Mailprogramme zeigen SVG nicht an. Fehlt `{{logo}}` im HTML, steht das Logo unter dem Text.
+- **Logo-Breite (Pixel)**: Standard 180; die Höhe passt sich an.
+- **Vorschau**: zeigt die Signatur sofort so, wie sie beim Kunden ankommt, mit deinem Namen als Beispiel.
+
+![Bereich „E-Mail-Signatur“ im Team mit Logo und Vorschau](img/screens/team-signatur.png)
+
+Beispiel:
+
+```html
+<p style="font-family:Arial,sans-serif;font-size:13px;color:#334155">
+  Viele Grüße<br><strong>{{name}}</strong><br>
+  {{team}} · Muster GmbH<br>
+  Tel. 0123 456789 · <a href="https://www.muster.de" style="color:#1d4ed8">www.muster.de</a>
+</p>
+{{logo}}
+```
+
+Spätere Änderungen an der Signatur wirken nur auf neue Antworten; bereits gesendete bleiben, wie sie waren.
 
 
 ### Postfächer (Admin)
@@ -562,3 +628,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 16.11.2026 | Web 1.3.1: Knopf „Abmelden“ oben rechts; Zwei-Faktor-Anmeldung freiwillig; Wartungsseite während eines Updates |
 | 16.11.2026 | App: Reiter „Meine Teams“ und „Zurückgestellt“ jetzt auch in der Ticketliste der App (die Reiter kommen vom Server) |
 | 17.11.2026 | Web 1.4.0: Übersicht mit zweiter Zeile „Meine Organisationen“, „Meine Teams“, „Organisationen meiner Mitarbeiter“ und „Teams meiner Mitarbeiter“; Klick filtert die Ticketliste |
+| 17.11.2026 | Web 1.5.0: HTML-Signaturen mit eingebettetem Logo je Team (Verwaltung → Teams); beim Antworten **Signatur hinzufügen** in Web und App |

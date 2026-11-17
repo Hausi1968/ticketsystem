@@ -15,7 +15,7 @@ class TicketMessage extends Model
     protected $fillable = [
         'tenant_id', 'ticket_id', 'type', 'user_id', 'contact_id', 'from_email', 'from_name', 'to', 'cc',
         'subject', 'body_text', 'body_html', 'message_id', 'in_reply_to', 'references', 'raw_path',
-        'delivery_status', 'delivery_error', 'sent_at',
+        'delivery_status', 'delivery_error', 'sent_at', 'signature_team_id',
     ];
 
     protected function casts(): array

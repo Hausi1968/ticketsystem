@@ -15,7 +15,7 @@ class Mailbox extends Model
     protected $attributes = [
         'imap_port' => 993, 'imap_encryption' => 'ssl', 'imap_folder' => 'INBOX',
         'smtp_port' => 465, 'smtp_encryption' => 'ssl',
-        'poll_interval_minutes' => 5, 'active' => true, 'send_acknowledgement' => false, 'usage' => 'both',
+        'poll_interval_minutes' => 5, 'active' => true, 'send_acknowledgement' => false, 'usage' => 'both', 'mark_seen' => 'fetch',
     ];
 
     public const USAGES = [
@@ -24,9 +24,14 @@ class Mailbox extends Model
         'send' => 'Nur versenden (Absender der Antworten)',
     ];
 
+    public const MARK_SEEN = [
+        'fetch' => 'Beim Abruf (sobald das Ticket angelegt ist)',
+        'resolved' => 'Erst wenn das Ticket gelöst oder geschlossen ist',
+    ];
+
     protected $fillable = [
         'tenant_id', 'team_id', 'default_category_id', 'name', 'email', 'usage', 'from_name', 'sent_folder', 'sent_copy_bcc',
-        'imap_host', 'imap_port', 'imap_encryption', 'imap_username', 'imap_password', 'imap_folder', 'processed_folder',
+        'imap_host', 'imap_port', 'imap_encryption', 'imap_username', 'imap_password', 'imap_folder', 'processed_folder', 'mark_seen',
         'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password',
         'poll_interval_minutes', 'active', 'send_acknowledgement', 'acknowledgement_text', 'blocked_senders', 'ignore_newsletters',
     ];
@@ -43,6 +48,8 @@ class Mailbox extends Model
             'ignore_newsletters' => 'boolean',
             'last_polled_at' => 'datetime',
             'last_success_at' => 'datetime',
+            'imap_uidvalidity' => 'integer',
+            'imap_last_uid' => 'integer',
         ];
     }
 
@@ -93,7 +100,15 @@ class Mailbox extends Model
 
     protected static function booted(): void
     {
-        static::saving(fn (Mailbox $m) => $m->email = mb_strtolower(trim($m->email)));
+        static::saving(function (Mailbox $m) {
+            $m->email = mb_strtolower(trim($m->email));
+
+            // Anderer Ordner oder andere Einstellung: Startpunkt für den UID-Abruf neu bestimmen
+            if ($m->exists && $m->isDirty(['mark_seen', 'imap_folder', 'imap_host', 'imap_username'])) {
+                $m->imap_uidvalidity = null;
+                $m->imap_last_uid = null;
+            }
+        });
     }
 
     public function team(): BelongsTo
@@ -114,6 +129,15 @@ class Mailbox extends Model
     public function canSend(): bool
     {
         return $this->usage !== 'fetch';
+    }
+
+    /**
+     * Bleiben abgerufene E-Mails im Postfach ungelesen, bis ihr Ticket gelöst oder geschlossen ist?
+     * Dann merkt sich Anliego die zuletzt abgeholte IMAP-UID statt des Gelesen-Kennzeichens.
+     */
+    public function marksSeenOnResolve(): bool
+    {
+        return $this->mark_seen === 'resolved' && $this->canFetch();
     }
 
     public function tickets(): HasMany

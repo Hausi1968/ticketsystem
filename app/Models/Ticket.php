@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\MessageType;
 use App\Enums\StatusBehaviour;
 use App\Enums\TicketPriority;
+use App\Jobs\SyncMailSeenFlags;
 use App\Sla\SlaClock;
 use App\Support\TicketNumber;
 use App\Tenancy\BelongsToTenant;
@@ -64,6 +65,18 @@ class Ticket extends Model
 
         // Fristen (SLA) bei jeder relevanten Änderung nachführen
         static::updating(fn (Ticket $ticket) => app(SlaClock::class)->updating($ticket));
+
+        // Gelöst/geschlossen bzw. wieder geöffnet: E-Mails im IMAP-Postfach als (un)gelesen markieren
+        static::updated(function (Ticket $ticket) {
+            if (! $ticket->wasChanged('status_id')) {
+                return;
+            }
+            $before = TicketStatus::query()->find($ticket->getOriginal('status_id'))?->closes() ?? false;
+            $after = TicketStatus::query()->find($ticket->status_id)?->closes() ?? false;
+            if ($before !== $after) {
+                SyncMailSeenFlags::dispatchIfNeeded($ticket);
+            }
+        });
     }
 
     // ---------------------------------------------------------------- Beziehungen

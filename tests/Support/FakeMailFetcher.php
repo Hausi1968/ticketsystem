@@ -19,6 +19,12 @@ class FakeMailFetcher implements MailFetcher
     /** @var list<array{mailbox: int, folder: string, raw: string}> */
     public array $appended = [];
 
+    /** Beim Abruf als gelesen markierte E-Mails je Postfach (Rohtext) */
+    public array $markedOnFetch = [];
+
+    /** @var list<array{mailbox: int, ids: list<string>, seen: bool}> */
+    public array $seenChanges = [];
+
     public function push(Mailbox $mailbox, string ...$raws): static
     {
         $this->inbox[$mailbox->id] = [...($this->inbox[$mailbox->id] ?? []), ...$raws];
@@ -38,9 +44,20 @@ class FakeMailFetcher implements MailFetcher
         $batch = array_splice($this->inbox[$mailbox->id], 0, $limit);
         foreach ($batch as $raw) {
             $handler($raw);
+            if (! $mailbox->marksSeenOnResolve()) {
+                $this->markedOnFetch[$mailbox->id][] = $raw;
+            }
         }
 
         return count($batch);
+    }
+
+    public function setSeen(Mailbox $mailbox, array $messageIds, bool $seen): int
+    {
+        sort($messageIds);
+        $this->seenChanges[] = ['mailbox' => $mailbox->id, 'ids' => $messageIds, 'seen' => $seen];
+
+        return count($messageIds);
     }
 
     public function test(Mailbox $mailbox): string

@@ -305,7 +305,8 @@ Anhänge erscheinen bei der jeweiligen Nachricht und lassen sich per Klick öffn
 ### Per E-Mail
 
 1. Anliego ruft die Postfächer regelmäßig ab (je Postfach einstellbar, meist alle 5–10 Minuten).
-2. Spam, Newsletter/Massen-Mails (falls so eingestellt) und gesperrte Absender werden aussortiert.
+2. Spam, Newsletter/Massen-Mails (falls so eingestellt) und gesperrte Absender werden aussortiert,
+   ebenso E-Mails, die älter sind als **„Nur E-Mails ab“** des Postfachs.
 3. Erkennt Anliego eine Antwort auf ein bestehendes Ticket (Ticketnummer im Betreff bzw. E-Mail-Verweise),
    wird die E-Mail dort angehängt. Sonst entsteht ein neues Ticket – mit Team und Kategorie des Postfachs.
 4. Die **Regeln** werden angewendet (Team, Kategorie, Priorität, Zuweisung). Ist danach noch niemand
@@ -517,10 +518,16 @@ Spätere Änderungen an der Signatur wirken nur auf neue Antworten; bereits gese
 - **Spam und Sperrliste**: gesperrte Absender (Adressen oder Domains),
   Newsletter und Massen-Mails ignorieren
 - **Eingang (IMAP)**: Server, Port, Verschlüsselung, Benutzername, Passwort, Ordner,
-  verarbeitete E-Mails verschieben nach, **im Postfach als gelesen markieren**
+  verarbeitete E-Mails verschieben nach, **Nur E-Mails ab** (Datum), **im Postfach als gelesen markieren**
   („beim Abruf“ oder „erst wenn das Ticket gelöst oder geschlossen ist“, siehe Kapitel 7)
 - **Ausgang (SMTP)**: Server, Port, Verschlüsselung, Benutzername, Passwort
 - **Gesendete Antworten in Outlook**: Kopie im IMAP-Ordner „Gesendet“ ablegen oder per BCC an eine Adresse
+
+**Nur E-Mails ab** steuert, ab wann E-Mails zu Tickets werden. Ältere E-Mails im Postfach bleiben
+unverändert (sie werden weder zu Tickets noch als gelesen markiert). Beim Anlegen eines Postfachs ist
+das heutige Datum vorgeschlagen, damit der Altbestand nicht importiert wird; leer = alle ungelesenen
+E-Mails. Das Datum lässt sich jederzeit ändern. Sind schon zu viele alte Tickets entstanden, markiere
+sie in der Ticketliste und schließe sie gesammelt über **Ausgewählte bearbeiten → Status setzen** (siehe Kapitel 5).
 
 Mit „erst wenn das Ticket gelöst oder geschlossen ist“ holt Anliego alle **neuen** E-Mails ab, auch
 solche, die jemand in Outlook schon geöffnet hat. Beim Umstellen beginnt Anliego bei der ältesten
@@ -650,3 +657,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 17.11.2026 | Web 1.4.0: Übersicht mit zweiter Zeile „Meine Organisationen“, „Meine Teams“, „Organisationen meiner Mitarbeiter“ und „Teams meiner Mitarbeiter“; Klick filtert die Ticketliste |
 | 17.11.2026 | Web 1.5.0: HTML-Signaturen mit eingebettetem Logo je Team (Verwaltung → Teams); beim Antworten **Signatur hinzufügen** in Web und App |
 | 17.11.2026 | Web 1.6.0: Postfächer: E-Mails im Postfach wahlweise erst als gelesen markieren, wenn das Ticket gelöst oder geschlossen ist (bei Wiedereröffnung wieder ungelesen) |
+| 17.11.2026 | Web 1.7.0: Postfächer: „Nur E-Mails ab“ (Datum) – ältere E-Mails werden nicht zu Tickets; beim Anlegen ist heute vorgeschlagen |

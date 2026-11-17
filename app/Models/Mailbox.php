@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Tenancy\BelongsToTenant;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,7 +32,7 @@ class Mailbox extends Model
 
     protected $fillable = [
         'tenant_id', 'team_id', 'default_category_id', 'name', 'email', 'usage', 'from_name', 'sent_folder', 'sent_copy_bcc',
-        'imap_host', 'imap_port', 'imap_encryption', 'imap_username', 'imap_password', 'imap_folder', 'processed_folder', 'mark_seen',
+        'imap_host', 'imap_port', 'imap_encryption', 'imap_username', 'imap_password', 'imap_folder', 'processed_folder', 'mark_seen', 'import_since',
         'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password',
         'poll_interval_minutes', 'active', 'send_acknowledgement', 'acknowledgement_text', 'blocked_senders', 'ignore_newsletters',
     ];
@@ -48,6 +49,7 @@ class Mailbox extends Model
             'ignore_newsletters' => 'boolean',
             'last_polled_at' => 'datetime',
             'last_success_at' => 'datetime',
+            'import_since' => 'date',
             'imap_uidvalidity' => 'integer',
             'imap_last_uid' => 'integer',
         ];
@@ -104,7 +106,7 @@ class Mailbox extends Model
             $m->email = mb_strtolower(trim($m->email));
 
             // Anderer Ordner oder andere Einstellung: Startpunkt für den UID-Abruf neu bestimmen
-            if ($m->exists && $m->isDirty(['mark_seen', 'imap_folder', 'imap_host', 'imap_username'])) {
+            if ($m->exists && $m->isDirty(['mark_seen', 'import_since', 'imap_folder', 'imap_host', 'imap_username'])) {
                 $m->imap_uidvalidity = null;
                 $m->imap_last_uid = null;
             }
@@ -138,6 +140,12 @@ class Mailbox extends Model
     public function marksSeenOnResolve(): bool
     {
         return $this->mark_seen === 'resolved' && $this->canFetch();
+    }
+
+    /** Ist diese E-Mail älter als „Nur E-Mails ab“? (ohne Datum zählt sie als neu) */
+    public function skipsMailFrom(?CarbonInterface $date): bool
+    {
+        return $this->import_since !== null && $date !== null && $date->lt($this->import_since->copy()->startOfDay());
     }
 
     public function tickets(): HasMany

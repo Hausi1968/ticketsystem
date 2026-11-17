@@ -84,3 +84,21 @@ it('legt Felder in der Verwaltung an', function () {
 
     expect(CustomField::where('key', 'kundennummer')->exists())->toBeTrue();
 });
+
+it('findet Tickets über die Werte eigener Felder in Liste, globaler Suche und App', function () {
+    app(TenantContext::class)->runFor($this->tenant, fn () => $this->ticket->updateFields(['bestellnummer' => 'BX-4711', 'bereich' => 'Technik'], $this->agent));
+    $this->actingAs($this->agent);
+
+    Livewire::test(ListTickets::class)
+        ->searchTable('bx-4711')
+        ->assertCanSeeTableRecords([$this->ticket])->assertCanNotSeeTableRecords([$this->second])
+        ->searchTable('Technik Lieferung')
+        ->assertCanSeeTableRecords([$this->ticket])->assertCanNotSeeTableRecords([$this->second])
+        // die Kennung selbst ist kein Suchtreffer
+        ->searchTable('bestellnummer')
+        ->assertCanNotSeeTableRecords([$this->ticket, $this->second]);
+
+    $ids = app(TenantContext::class)->runWithoutTenancy(fn () => \App\Filament\Resources\Tickets\TicketResource::getGlobalSearchEloquentQuery()
+        ->where(fn ($q) => \App\Tickets\TicketSearch::apply($q, '4711'))->pluck('id')->all());
+    expect($ids)->toBe([$this->ticket->id]);
+});

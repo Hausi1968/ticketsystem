@@ -192,8 +192,9 @@ nebeneinander, ist der waagerechte Scrollbalken immer direkt über der Seitenaus
 
 ### Suchen, filtern, sortieren
 
-- Die **Suche** findet Tickets über Nummer, Betreff, Nachrichtentexte, Notizen und Absender – immer über
-  alle Tickets, unabhängig vom gewählten Reiter.
+- Die **Suche** findet Tickets über Nummer, Betreff, Nachrichtentexte, Notizen, Absender und die Werte der
+  eigenen Felder (z. B. Bestellnummer, Auswahlwert; nicht Ja/Nein-Felder) – immer über alle Tickets,
+  unabhängig vom gewählten Reiter. Das gilt auch für die Suche oben rechts und in der App.
 - **Filter**: Mandant, Team, Priorität, Status, Frist (SLA), Kategorie und die eigenen Felder,
   die in der Liste angezeigt werden.
 - **Sortieren** per Klick auf die Spaltenüberschrift: Ticket, Betreff, Status, Kategorie, Priorität, Frist,
@@ -572,6 +573,7 @@ Regeln laufen bei jedem neuen Ticket der Reihe nach:
 Zusätzliche Felder je Mandant (z. B. Bestellnummer, Mitgliedsnummer): Bezeichnung, Kennung (für die API,
 später nicht änderbar), Art (Text, Zahl, Datum, Auswahl, Ja/Nein), Auswahlwerte, „In der Ticketliste anzeigen und filtern“,
 Reihenfolge, Aktiv. Die Mitgliederverwaltung kann die Felder beim Anlegen eines Tickets mitschicken.
+Die Werte aktiver Felder (außer Ja/Nein) sind automatisch über die Suche auffindbar, auch wenn das Feld nicht in der Liste angezeigt wird.
 
 ### Fristen (SLA) (Admin)
 
@@ -663,3 +665,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 17.11.2026 | Web 1.6.0: Postfächer: E-Mails im Postfach wahlweise erst als gelesen markieren, wenn das Ticket gelöst oder geschlossen ist (bei Wiedereröffnung wieder ungelesen) |
 | 17.11.2026 | Web 1.7.0: Postfächer: „Nur E-Mails ab“ (Datum) – ältere E-Mails werden nicht zu Tickets; beim Anlegen ist heute vorgeschlagen |
 | 17.11.2026 | Web 1.7.1: Ticketliste kompakter (flachere obere Leiste, weniger Abstand über den Reitern); Suche, Filter und Spaltenüberschriften bleiben beim Scrollen stehen, waagerechter Scrollbalken immer sichtbar |
+| 17.11.2026 | Web 1.7.2: Suche (Ticketliste, Suche oben rechts, App) findet Tickets auch über die Werte der eigenen Felder |

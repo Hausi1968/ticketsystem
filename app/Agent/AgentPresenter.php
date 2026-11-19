@@ -63,6 +63,8 @@ class AgentPresenter
             'sla_due_at' => $ticket->sla_due_at?->toIso8601String(),
             'snoozed_until' => $ticket->isSnoozed() ? $ticket->snoozed_until->toIso8601String() : null,
             'error_count' => (int) $ticket->error_count,
+            // Kundenantwort, die dieser Mitarbeiter noch nicht gesehen hat (in der App „NEU“)
+            'unread_reply' => $ticket->hasUnreadCustomerReply(),
             'created_at' => $ticket->created_at?->toIso8601String(),
             'updated_at' => $ticket->updated_at?->toIso8601String(),
         ];
@@ -74,7 +76,8 @@ class AgentPresenter
         $canWrite = BulkEditor::canWrite($user, $ticket);
         $role = $user->roleIn($ticket->tenant_id);
 
-        return self::summary($ticket) + [
+        // wer das Ticket gerade öffnet, hat die Antwort gesehen
+        return ['unread_reply' => false] + self::summary($ticket) + [
             'fields' => $ticket->fields ?: (object) [],
             'participants' => $ticket->participants()->pluck('email')->all(),
             'time_minutes' => (int) $ticket->timeEntries->sum('minutes'),

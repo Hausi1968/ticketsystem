@@ -190,6 +190,14 @@ Die Liste füllt das Fenster bis zum unteren Rand. Beim Blättern scrollen nur d
 Suchfeld, Filter, Spaltenauswahl und die Spaltenüberschriften bleiben stehen. Passen nicht alle Spalten
 nebeneinander, ist der waagerechte Scrollbalken immer direkt über der Seitenauswahl sichtbar.
 
+### Neue Kundenantworten („NEU“)
+
+Schreibt der Kunde auf ein bestehendes Ticket zurück, steht in der Liste ein rotes **NEU** vor dem Betreff
+und der Betreff ist fett – so lange, bis **du** das Ticket geöffnet hast. Das gilt für jeden Mitarbeiter
+einzeln: Öffnet ein Kollege das Ticket, bleibt die Markierung bei dir stehen. Die erste Nachricht eines neuen
+Tickets wird nicht so markiert, dafür gibt es den Status „Neu“. Hast du ein Ticket noch nie geöffnet, zählt
+eine Kundenantwort, die nach der letzten Antwort des Teams kam. In der App erscheint dieselbe Markierung.
+
 ### Suchen, filtern, sortieren
 
 - Die **Suche** findet Tickets über Nummer, Betreff, Nachrichtentexte, Notizen, Absender und die Werte der
@@ -391,6 +399,7 @@ Beim ersten Start fragt die App, ob sie Mitteilungen senden darf – erlauben, s
 - Reiter **Meine**, **Unzugewiesen**, **Meine Teams**, **Zurückgestellt**, **Alle offenen**, **Wartend**, **Geschlossen**, **Alle**
   (mit Anzahl bei „Meine“, „Unzugewiesen“ und „Meine Teams“)
 - **Suche** über Nummer, Betreff und Texte
+- **NEU** bei Tickets mit einer Kundenantwort, die du noch nicht geöffnet hast (wie in der Weboberfläche)
 - **Mandanten-Auswahl** als Chips oben, wenn du mehrere Mandanten betreust
 - Nach unten ziehen aktualisiert, weiter scrollen lädt ältere Tickets
 
@@ -666,3 +675,4 @@ Neue APK-Versionen baut GitHub → Actions → **App bauen (APK)** bei Expo, die
 | 17.11.2026 | Web 1.7.0: Postfächer: „Nur E-Mails ab“ (Datum) – ältere E-Mails werden nicht zu Tickets; beim Anlegen ist heute vorgeschlagen |
 | 17.11.2026 | Web 1.7.1: Ticketliste kompakter (flachere obere Leiste, weniger Abstand über den Reitern); Suche, Filter und Spaltenüberschriften bleiben beim Scrollen stehen, waagerechter Scrollbalken immer sichtbar |
 | 17.11.2026 | Web 1.7.2: Suche (Ticketliste, Suche oben rechts, App) findet Tickets auch über die Werte der eigenen Felder |
+| 19.11.2026 | Web 1.8.0: Ungelesene Kundenantworten werden in der Ticketliste (Web und App) je Mitarbeiter mit „NEU“ markiert, bis man das Ticket öffnet |

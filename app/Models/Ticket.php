@@ -206,6 +206,34 @@ class Ticket extends Model
     // ---------------------------------------------------------------- Abfragen
 
     /** Tickets, die nicht durch ihren Status geschlossen sind */
+    /** Fügt `my_read_at` hinzu: wann der Mitarbeiter das Ticket zuletzt angesehen hat */
+    public function scopeWithReadAtFor(Builder $query, int $userId): Builder
+    {
+        return $query->addSelect(['my_read_at' => TicketRead::query()->select('read_at')
+            ->whereColumn('ticket_reads.ticket_id', 'tickets.id')
+            ->where('ticket_reads.user_id', $userId)
+            ->limit(1)]);
+    }
+
+    /**
+     * Ist eine Kundenantwort eingegangen, die der Mitarbeiter noch nicht gesehen hat? (Markierung „NEU“)
+     * Die erste Nachricht eines neuen Tickets zählt nicht als Antwort, dafür gibt es den Status „Neu“.
+     * Hat der Mitarbeiter das Ticket nie geöffnet, zählt eine Antwort nach unserer letzten Antwort.
+     */
+    public function hasUnreadCustomerReply(): bool
+    {
+        $last = $this->last_customer_message_at;
+
+        if ($last === null || $this->created_at === null || $last->lte($this->created_at->copy()->addMinute())) {
+            return false;
+        }
+
+        $readAt = $this->getAttribute('my_read_at');
+        $seen = $readAt !== null ? Carbon::parse($readAt) : $this->last_agent_message_at;
+
+        return $seen === null || $last->gt($seen);
+    }
+
     public function scopeUnresolved(Builder $query): Builder
     {
         return $query->whereIn('status_id', TicketStatus::idsWith(StatusBehaviour::Open, StatusBehaviour::Pending));

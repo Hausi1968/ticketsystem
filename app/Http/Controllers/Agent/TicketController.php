@@ -37,7 +37,8 @@ class TicketController
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $query = Ticket::query()->with(['tenant', 'status', 'category', 'assignee', 'team', 'contact'])->whereNull('merged_into_id');
+        $query = Ticket::query()->with(['tenant', 'status', 'category', 'assignee', 'team', 'contact'])->whereNull('merged_into_id')
+            ->withReadAtFor($request->user()->getKey());
         $search = trim((string) ($data['search'] ?? ''));
 
         if ($search !== '') {

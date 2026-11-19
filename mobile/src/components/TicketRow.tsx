@@ -26,6 +26,7 @@ export const TicketRow = memo(function TicketRow({ ticket, onPress }: { ticket: 
           </Text>
         )}
         <View style={s.pills}>
+          {ticket.unread_reply && <Pill label="NEU" tone="danger" />}
           {ticket.status && <Pill label={ticket.status.name} tone={behaviourTone(ticket.status.behaviour)} />}
           {priorityTone(ticket.priority.value) !== 'neutral' && <Pill label={ticket.priority.label} tone={priorityTone(ticket.priority.value)} />}
           {ticket.error_count > 1 && <Pill label={`${ticket.error_count}× aufgetreten`} tone="danger" />}

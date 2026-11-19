@@ -4,6 +4,7 @@ namespace App\Tickets;
 
 use App\Models\Ticket;
 use App\Models\TicketPresence;
+use App\Models\TicketRead;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -20,6 +21,12 @@ class Presence
         TicketPresence::query()->updateOrCreate(
             ['ticket_id' => $ticket->getKey(), 'user_id' => $user->getKey()],
             ['activity' => $activity, 'last_seen_at' => now()],
+        );
+
+        // Wer das Ticket offen hat, hat die Kundenantworten gesehen (Markierung „NEU“ entfällt)
+        TicketRead::query()->updateOrCreate(
+            ['ticket_id' => $ticket->getKey(), 'user_id' => $user->getKey()],
+            ['read_at' => now()],
         );
 
         if (random_int(1, 100) === 1) {

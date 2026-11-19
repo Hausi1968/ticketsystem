@@ -27,9 +27,11 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 class TicketsTable
 {
@@ -40,6 +42,8 @@ class TicketsTable
             ->searchPlaceholder('Alle Tickets durchsuchen (Text, Absender, Nummer)')
             ->poll('30s')
             ->recordUrl(fn (Ticket $record) => route('filament.app.resources.tickets.view', $record))
+            // für die Markierung „NEU“ bei ungelesenen Kundenantworten
+            ->modifyQueryUsing(fn (Builder $query) => auth()->check() ? $query->withReadAtFor(auth()->id()) : $query)
             ->columns([
                 TextColumn::make('number')->label('Ticket')->badge()
                     ->formatStateUsing(fn (Ticket $record) => $record->reference())
@@ -51,6 +55,11 @@ class TicketsTable
                         ? $query->orWhere('number', $number)
                         : $query),
                 TextColumn::make('subject')->label('Betreff')->sortable()
+                    // Ungelesene Kundenantwort: „NEU“ vor dem Betreff, Betreff fett
+                    ->prefix(fn (Ticket $record) => $record->hasUnreadCustomerReply()
+                        ? new HtmlString('<span class="anliego-neu" title="Neue Kundenantwort, noch nicht gelesen">NEU</span> ')
+                        : null)
+                    ->weight(fn (Ticket $record) => $record->hasUnreadCustomerReply() ? FontWeight::Bold : null)
                     // Sucht im Betreff, im Text aller Nachrichten und beim Absender (Name/E-Mail)
                     ->searchable(query: fn (Builder $query, string $search) => TicketSearch::apply($query, $search))->wrap()->limit(80)
                     ->description(fn (Ticket $record) => $record->contact?->label()),

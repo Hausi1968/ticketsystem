@@ -121,6 +121,7 @@ export type TicketSummary = {
   sla_due_at: string | null;
   snoozed_until?: string | null;
   error_count: number;
+  unread_reply?: boolean;
   created_at: string;
   updated_at: string;
 };
